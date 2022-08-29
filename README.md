@@ -1,0 +1,2 @@
+# BNN
+Forskning for masteroppgave
