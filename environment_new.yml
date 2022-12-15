@@ -1,0 +1,97 @@
+name: BNN
+channels:
+  - pytorch
+  - anaconda
+  - defaults
+dependencies:
+- pytorch= 1.11
+- pandas = 1.3
+- tqdm   = 4.62
+- matplotlib= 3.4
+- pip
+- pip:
+  - PIL 8.4.0
+  - PIL.Image 8.4.0
+  - PIL._version 8.4.0
+  - _csv 1.0
+  - _ctypes 1.1.0
+  - _decimal 1.70
+  - _shaded_ply 3.7
+  - _shaded_ply.lex 3.8
+  - _shaded_ply.yacc 3.8
+  - _shaded_thriftpy 0.4.13
+  - argparse 1.1
+  - csv 1.0
+  - ctypes 1.1.0
+  - cycler 0.10.0
+  - dateutil 2.8.2
+  - decimal 1.70
+  - dill 0.3.4
+  - distutils 3.6.8
+  - google.protobuf 3.19.4
+  - http.server 0.6
+  - ipaddress 1.0
+  - json 2.0.9
+  - kiwisolver 1.3.1
+  - logging 0.5.1.2
+  - matplotlib 3.3.4
+  - numpy 1.19.5
+  - numpy.core 1.19.5
+  - numpy.core._multiarray_umath 3.1
+  - numpy.lib 1.19.5
+  - numpy.linalg._umath_linalg b'0.1.5'
+  - pandas 1.1.5
+  - pkg_resources._vendor.appdirs 1.4.3
+  - pkg_resources._vendor.packaging 21.2
+  - pkg_resources._vendor.packaging.__about__ 21.2
+  - pkg_resources._vendor.pyparsing 2.2.1
+  - pkg_resources.extern.appdirs 1.4.3
+  - pkg_resources.extern.packaging 21.2
+  - pkg_resources.extern.pyparsing 2.2.1
+  - platform 1.0.8
+  - pyparsing 3.0.9
+  - pytz 2022.1
+  - re 2.2.1
+  - scipy 1.5.4
+  - scipy._lib._uarray 0.5.1+49.g4c3f1d7.scipy
+  - scipy._lib.decorator 4.0.5
+  - scipy.integrate._dop b'$Revision: $'
+  - scipy.integrate._ode $Id$
+  - scipy.integrate._odepack  1.9 
+  - scipy.integrate._quadpack  1.13 
+  - scipy.integrate.lsoda b'$Revision: $'
+  - scipy.integrate.vode b'$Revision: $'
+  - scipy.interpolate._fitpack  1.7 
+  - scipy.interpolate.dfitpack b'$Revision: $'
+  - scipy.linalg._fblas b'$Revision: $'
+  - scipy.linalg._flapack b'$Revision: $'
+  - scipy.linalg._flinalg b'$Revision: $'
+  - scipy.ndimage 2.0
+  - scipy.optimize.__nnls b'$Revision: $'
+  - scipy.optimize._cobyla b'$Revision: $'
+  - scipy.optimize._lbfgsb b'$Revision: $'
+  - scipy.optimize._minpack  1.10 
+  - scipy.optimize._slsqp b'$Revision: $'
+  - scipy.optimize.minpack2 b'$Revision: $'
+  - scipy.sparse.linalg.eigen.arpack._arpack b'$Revision: $'
+  - scipy.sparse.linalg.isolve._iterative b'$Revision: $'
+  - scipy.special.specfun b'$Revision: $'
+  - scipy.stats.mvn b'$Revision: $'
+  - scipy.stats.statlib b'$Revision: $'
+  - seaborn 0.11.2
+  - seaborn.external.husl 2.1.0
+  - six 1.16.0
+  - socketserver 0.4
+  - tensorboardX 2.5.1
+  - torch 1.10.1+cu102
+  - torch.torch_version 1.10.1+cu102
+  - torch.version 1.10.1+cu102
+  - torchvision 0.11.2+cu102
+  - torchvision.version 0.11.2+cu102
+  - tqdm 4.64.0
+  - tqdm._dist_ver 4.64.0
+  - tqdm.cli 4.64.0
+  - tqdm.version 4.64.0
+  - urllib.request 3.6
+  - xmlrpc.client 3.6
+  - zlib 1.0
