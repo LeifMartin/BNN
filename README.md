@@ -2,3 +2,5 @@
 Research for Masters Thesis.
 
 Tentatively built on the work from Haakooto/CS282_final_project with Håkon Olav Torvik and Khachatur Mirijanyan.
+
+Also per haps the code from Aliaksandr Hubin, my supervisor at UiO.

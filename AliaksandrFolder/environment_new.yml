@@ -1,0 +1,44 @@
+name: BNN2
+
+channels:
+  - anaconda
+  - defaults
+  - conda-forge
+  
+dependencies:
+  - python
+  - pip
+  - matplotlib
+  - numpy
+  - seaborn
+  - tensorboardX
+  - pytorch
+  - pandas
+  - tqdm
+  - matplotlib
+  - jupyterhub
+  - jupyterlab
+  - jupyterlab-git
+  - IPy
+  - ipydatetime
+  - ipykernel
+  - ipython
+  - ipywidgets
+  - pip:
+    - torch
+    - torchvision
+    - jupyter-client
+    - jupyter-console
+    - jupyter-contrib-core
+    - jupyter-contrib-nbextensions
+    - jupyter-core
+    - jupyter-highlight-selected-word
+    - jupyter-latex-envs
+    - jupyter-nbextensions-configurator
+    - jupyter-server
+    - jupyter-server-mathjax
+    - jupyter-telemetry
+    - jupyterlab-pygments
+    - jupyterlab-server
+    - jupyterlab-widgets
+    - ipython-genutils
