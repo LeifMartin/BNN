@@ -87,8 +87,6 @@ NUM_TEST_BATCHES = len(te_ids)/BATCH_SIZE
 def sigmoid(x):
     return (1 / (1 + np.exp(-x)))
 
-import mpmath
-
 
 
 class vMFLogPartition(torch.autograd.Function):
@@ -391,28 +389,44 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
-    def __init__(self):
+    #The new constructor requires
+    def __init__(self,layers):
         super().__init__()
-        self.l1 = BayesianLinearLast(256, 400)
-        self.l2 = BayesianLinear(400, 600)
-        self.l3 = BayesianLinearLast(600, 5)
+        self.layer = {}
+        i = 0
+        while i<len(layers):            
+            name = 'l'+str(i)
+            if (i==0 or i==len(layers)-1):                
+                self.layer[name] = BayesianLinearLast(layers[i][0],layers[i][1])
+            else:
+                self.layer[name] = BayesianLinear(layers[i][0],layers[i][1])
+            i = i+1
 
+        
+    #Old constructor:
+    #def __init__(self,layers):
+    #    super().__init__()
+    #    self.l1 = BayesianLinearLast(256, 400)
+    #    self.l2 = BayesianLinear(400, 600)
+    #    self.l3 = BayesianLinearLast(600, 5)
+    
+    
     def forward(self, x, sample=False):
         x = x.view(-1, 256)
-        x = F.relu(self.l1(x, sample))
-        x = F.relu(self.l2(x, sample))
-        x = F.log_softmax(self.l3(x, sample), dim=1)
+        x = F.relu(self.layer[l1](x, sample))
+        x = F.relu(self.layer[l2](x, sample))
+        x = F.log_softmax(self.layer[l3](x, sample), dim=1)
         return x
 
     def log_prior(self):
-        return self.l1.log_prior \
-               + self.l2.log_prior \
-               + self.l3.log_prior
+        return self.layer[l1].log_prior \
+               + self.layer[l2].log_prior \
+               + self.layer[l3].log_prior
 
     def log_variational_posterior(self):
-        return self.l1.log_variational_posterior \
-               + self.l2.log_variational_posterior \
-               + self.l3.log_variational_posterior
+        return self.layer[l1].log_variational_posterior \
+               + self.layer[l2].log_variational_posterior \
+               + self.layer[l3].log_variational_posterior
 
     def sample_elbo(self, input, target, samples=SAMPLES):
         outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
@@ -429,15 +443,7 @@ class BayesianNetwork(nn.Module):
         return loss, log_prior, log_variational_posterior, negative_log_likelihood
 
 
-net = BayesianNetwork().to(DEVICE)
 
-
-def write_weight_histograms(epoch, i):
-    aaa = 5
-
-
-def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
-    aaa = 5
 
 
 def train(net, optimizer, epoch, i):
@@ -553,7 +559,8 @@ trtimes  = np.zeros(epochs)
 for i in range(0, 1):
     print(i)
     torch.manual_seed(i)
-    net = BayesianNetwork().to(DEVICE)
+    net = BayesianNetwork(layers = [(256,400),(400, 600),(600, 5)]).to(DEVICE)
+    print(net.parameters())
     optimizer = optim.Adam(net.parameters(), lr=0.0001)
     for epoch in range(epochs):
 
@@ -564,8 +571,20 @@ for i in range(0, 1):
 
     np.savetxt("soundGmaccuracies_" + str(i) + ".csv", res, delimiter=",")
 
-#The code above has been commented out here since I have moved it to the notebook.
+#The code above could be moved to the notebook.
 
+r""" This part is commented out from Aliaksandrs code since I don't need it.
+net = BayesianNetwork().to(DEVICE)
+
+
+def write_weight_histograms(epoch, i):
+    aaa = 5
+
+
+def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
+    aaa = 5
+
+"""
 # %%
 
 #res = test_ensemble()
