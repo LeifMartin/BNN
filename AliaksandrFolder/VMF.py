@@ -153,13 +153,13 @@ class vMFLogPartition(torch.autograd.Function):
 class Gaussian(object):
     def __init__(self, mu, rho):
         super().__init__()
-        self.mu = mu
+        self.mu = mu.to(DEVICE)
         self.rho = rho
         self.normal = torch.distributions.Normal(0, 1)
 
     @property
     def sigma(self):
-        return torch.log1p(torch.exp(self.rho))
+        return torch.log1p(torch.exp(self.rho)).to(DEVICE)
 
     def sample(self):
         epsilon = self.normal.sample(self.rho.size()).to(DEVICE)
@@ -389,7 +389,63 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
-    #The new constructor requires
+    #Old nonvariable layernumber and dimension setup:
+    #def __init__(self,layers):
+    #    super().__init__()
+    #    self.l1 = BayesianLinearLast(256, 400)
+    #    self.l2 = BayesianLinear(400, 600)
+    #    self.l3 = BayesianLinearLast(600, 5)
+    
+    #def forward(self, x, sample=False):
+    #    x = x.view(-1, 256)
+    #    x = F.relu(self.l1(x, sample))
+    #    x = F.relu(self.l2(x, sample))
+    #    x = F.log_softmax(self.l3(x, sample), dim=1)
+    #    return x
+
+    #def log_prior(self):
+    #    return self.l1.log_prior \
+    #           + self.l2.log_prior \
+    #           + self.l3.log_prior
+
+    #def log_variational_posterior(self):
+    #    return self.l1.log_variational_posterior \
+    #           + self.l2.log_variational_posterior \
+    #           + self.l3.log_variational_posterior
+    
+    #The experimental automated constructor:
+    #def __init__(self,layers):
+    #    super().__init__()
+    #    self.layer = {}
+    #    i = 0
+    #    while i<len(layers):            
+    #        name = 'l'+str(i)
+    #        if (i==0 or i==len(layers)-1):                
+    #            self.layer[name] = BayesianLinearLast(layers[i][0],layers[i][1])
+    #        else:
+    #            self.layer[name] = BayesianLinear(layers[i][0],layers[i][1])
+    #        i = i+1
+    
+    #def forward(self, x, sample=False):
+    #    x = x.view(-1, 256)
+    #    x = F.relu(self.layer[l1](x, sample))
+    #    x = F.relu(self.layer[l2](x, sample))
+    #    x = F.log_softmax(self.layer[l3](x, sample), dim=1)
+    #    return x
+
+    #def log_prior(self):
+    #    return self.layer[l1].log_prior \
+    #           + self.layer[l2].log_prior \
+    #           + self.layer[l3].log_prior
+
+    #def log_variational_posterior(self):
+    #    return self.layer[l1].log_variational_posterior \
+    #           + self.layer[l2].log_variational_posterior \
+    #           + self.layer[l3].log_variational_posterior
+    
+    
+    
+    #The very manual one:
     def __init__(self,layers):
         super().__init__()
         self.layer = {}
@@ -401,32 +457,30 @@ class BayesianNetwork(nn.Module):
             else:
                 self.layer[name] = BayesianLinear(layers[i][0],layers[i][1])
             i = i+1
-
-        
-    #Old constructor:
-    #def __init__(self,layers):
-    #    super().__init__()
-    #    self.l1 = BayesianLinearLast(256, 400)
-    #    self.l2 = BayesianLinear(400, 600)
-    #    self.l3 = BayesianLinearLast(600, 5)
-    
-    
+        print(self.layer.items())
+        i = 0
+        for k,v in self.layer.items():
+            exec("%s = %s" % (k, v(layers[i][0],layers[i][1]).to(DEVICE)))
+            i = i+1
+            
     def forward(self, x, sample=False):
         x = x.view(-1, 256)
-        x = F.relu(self.layer[l1](x, sample))
-        x = F.relu(self.layer[l2](x, sample))
-        x = F.log_softmax(self.layer[l3](x, sample), dim=1)
+        x = F.relu(self.l1(x, sample))
+        x = F.relu(self.l2(x, sample))
+        x = F.log_softmax(self.l3(x, sample), dim=1)
         return x
 
     def log_prior(self):
-        return self.layer[l1].log_prior \
-               + self.layer[l2].log_prior \
-               + self.layer[l3].log_prior
+        return self.l1.log_prior \
+               + self.l2.log_prior \
+               + self.l3.log_prior
 
     def log_variational_posterior(self):
-        return self.layer[l1].log_variational_posterior \
-               + self.layer[l2].log_variational_posterior \
-               + self.layer[l3].log_variational_posterior
+        return self.l1.log_variational_posterior \
+               + self.l2.log_variational_posterior \
+               + self.l3.log_variational_posterior
+
+    
 
     def sample_elbo(self, input, target, samples=SAMPLES):
         outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
@@ -573,7 +627,7 @@ for i in range(0, 1):
 
 #The code above could be moved to the notebook.
 
-r""" This part is commented out from Aliaksandrs code since I don't need it.
+r"""This part is commented out from Aliaksandrs code since I don't need it.
 net = BayesianNetwork().to(DEVICE)
 
 
