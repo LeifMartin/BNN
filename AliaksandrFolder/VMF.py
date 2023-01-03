@@ -87,6 +87,8 @@ NUM_TEST_BATCHES = len(te_ids)/BATCH_SIZE
 def sigmoid(x):
     return (1 / (1 + np.exp(-x)))
 
+import mpmath
+
 
 
 class vMFLogPartition(torch.autograd.Function):
@@ -106,7 +108,6 @@ class vMFLogPartition(torch.autograd.Function):
         Args:
             args[0] = d; scalar (> 0)
             args[1] = kappa; (> 0) torch tensor of any shape
-
         Returns:
             logC = log C_d(kappa); torch tensor of the same shape as kappa
         '''
@@ -153,13 +154,13 @@ class vMFLogPartition(torch.autograd.Function):
 class Gaussian(object):
     def __init__(self, mu, rho):
         super().__init__()
-        self.mu = mu.to(DEVICE)
+        self.mu = mu
         self.rho = rho
         self.normal = torch.distributions.Normal(0, 1)
 
     @property
     def sigma(self):
-        return torch.log1p(torch.exp(self.rho)).to(DEVICE)
+        return torch.log1p(torch.exp(self.rho))
 
     def sample(self):
         epsilon = self.normal.sample(self.rho.size()).to(DEVICE)
@@ -216,13 +217,11 @@ class vMF(nn.Module):
 
         '''
         Evaluate logliks, log p(x)
-
         Args:
             x = batch for x
             utc = whether to evaluate only up to constant or exactly
                 if True, no log-partition computed
                 if False, exact loglik computed
-
         Returns:
             logliks = log p(x)
         '''
@@ -243,10 +242,8 @@ class vMF(nn.Module):
         Args:
             N = number of samples to generate
             rsf = multiplicative factor for extra backup samples in rejection sampling
-
         Returns:
             samples; N samples generated
-
         Notes:
             no autodiff
         '''
@@ -310,6 +307,40 @@ class ScaleMixtureGaussian(object):
         prob2 = torch.exp(self.gaussian2.log_prob(input))
         return (torch.log(self.pi * prob1 + (1 - self.pi) * prob2)).sum()
 
+    
+    
+    
+###----------------------------------###   
+###-------------The PRIOR------------###
+###----------------------------------###
+    
+    
+    
+    
+class HypersphericalUniform(object):
+
+    def __init__(self, dim, device="cuda:1"):
+        super().__init__()
+        self._dim = dim
+        self.device = device
+
+    def __log_surface_area(self):
+        
+        lgamma = torch.lgamma(torch.tensor([(self._dim + 1) / 2]).to(self.device))
+        
+        return math.log(2) + ((self._dim + 1) / 2) * math.log(math.pi) - lgamma
+    
+    def log_prob(self, x):
+        return -torch.ones(x.shape[:-1], device=self.device) * self.__log_surface_area()
+    
+
+    
+
+    
+###----------------------------------###   
+###-------------The PRIOR------------###
+###----------------------------------###
+
 
 # set prior parameters
 PI = 1
@@ -359,7 +390,7 @@ class BayesianLinear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         # Weight parameters
-        self.weight_mu = nn.Parameter(torch.Tensor(out_features, in_features).uniform_(-0.2, 0.2), requires_grad=True).reshape(out_features * in_features).to(DEVICE)
+        self.weight_mu = nn.Parameter(torch.Tensor(out_features*in_features).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE)
         self.weight_rho = nn.Parameter(torch.Tensor(1).uniform_(1,10), requires_grad=True).to(DEVICE)
         self.weight =  vMF(self.weight_mu, logkappa=self.weight_rho, x_dim=out_features * in_features)
         # Bias parameters
@@ -367,8 +398,8 @@ class BayesianLinear(nn.Module):
         self.bias_rho = nn.Parameter(torch.Tensor(out_features).uniform_(-5, -4), requires_grad=True)
         self.bias = Gaussian(self.bias_mu, self.bias_rho)
         # Prior distributions
-        self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
-        self.bias_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
+        self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
+        self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)
         self.log_prior = 0
         self.log_variational_posterior = 0
 
@@ -389,85 +420,17 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
-    #Old nonvariable layernumber and dimension setup:
-    #def __init__(self,layers):
-    #    super().__init__()
-    #    self.l1 = BayesianLinearLast(256, 400)
-    #    self.l2 = BayesianLinear(400, 600)
-    #    self.l3 = BayesianLinearLast(600, 5)
-    
-    #def forward(self, x, sample=False):
-    #    x = x.view(-1, 256)
-    #    x = F.relu(self.l1(x, sample))
-    #    x = F.relu(self.l2(x, sample))
-    #    x = F.log_softmax(self.l3(x, sample), dim=1)
-    #    return x
-
-    #def log_prior(self):
-    #    return self.l1.log_prior \
-    #           + self.l2.log_prior \
-    #           + self.l3.log_prior
-
-    #def log_variational_posterior(self):
-    #    return self.l1.log_variational_posterior \
-    #           + self.l2.log_variational_posterior \
-    #           + self.l3.log_variational_posterior
-    
-    #The experimental automated constructor:
-    #def __init__(self,layers):
-    #    super().__init__()
-    #    self.layer = {}
-    #    i = 0
-    #    while i<len(layers):            
-    #        name = 'l'+str(i)
-    #        if (i==0 or i==len(layers)-1):                
-    #            self.layer[name] = BayesianLinearLast(layers[i][0],layers[i][1])
-    #        else:
-    #            self.layer[name] = BayesianLinear(layers[i][0],layers[i][1])
-    #        i = i+1
-    
-    #def forward(self, x, sample=False):
-    #    x = x.view(-1, 256)
-    #    x = F.relu(self.layer[l1](x, sample))
-    #    x = F.relu(self.layer[l2](x, sample))
-    #    x = F.log_softmax(self.layer[l3](x, sample), dim=1)
-    #    return x
-
-    #def log_prior(self):
-    #    return self.layer[l1].log_prior \
-    #           + self.layer[l2].log_prior \
-    #           + self.layer[l3].log_prior
-
-    #def log_variational_posterior(self):
-    #    return self.layer[l1].log_variational_posterior \
-    #           + self.layer[l2].log_variational_posterior \
-    #           + self.layer[l3].log_variational_posterior
-    
-    
-    
-    #The very manual one:
-    def __init__(self,layers):
+    def __init__(self):
         super().__init__()
-        self.layer = {}
-        i = 0
-        while i<len(layers):            
-            name = 'l'+str(i)
-            if (i==0 or i==len(layers)-1):                
-                self.layer[name] = BayesianLinearLast(layers[i][0],layers[i][1])
-            else:
-                self.layer[name] = BayesianLinear(layers[i][0],layers[i][1])
-            i = i+1
-        print(self.layer.items())
-        i = 0
-        for k,v in self.layer.items():
-            exec("%s = %s" % (k, v(layers[i][0],layers[i][1]).to(DEVICE)))
-            i = i+1
-            
+        self.l1 = BayesianLinear(256, 400)
+        self.l2 = BayesianLinear(400, 600)
+        self.l3 = BayesianLinearLast(600, 5)
+
     def forward(self, x, sample=False):
         x = x.view(-1, 256)
         x = F.relu(self.l1(x, sample))
         x = F.relu(self.l2(x, sample))
-        x = F.log_softmax(self.l3(x, sample), dim=1)
+        x = F.log_softmax(self.l3(x, sample), dim=1)#self.l3(x, sample) 
         return x
 
     def log_prior(self):
@@ -479,8 +442,6 @@ class BayesianNetwork(nn.Module):
         return self.l1.log_variational_posterior \
                + self.l2.log_variational_posterior \
                + self.l3.log_variational_posterior
-
-    
 
     def sample_elbo(self, input, target, samples=SAMPLES):
         outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
@@ -497,7 +458,12 @@ class BayesianNetwork(nn.Module):
         return loss, log_prior, log_variational_posterior, negative_log_likelihood
 
 
+def write_weight_histograms(epoch, i):
+    aaa = 5
 
+
+def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
+    aaa = 5
 
 
 def train(net, optimizer, epoch, i):
@@ -607,14 +573,13 @@ print("Classes loaded")
 
 # %%
 
-epochs = 250
+epochs = 125
 trtimes  = np.zeros(epochs)
 # make inference on 10 networks
 for i in range(0, 1):
     print(i)
     torch.manual_seed(i)
-    net = BayesianNetwork(layers = [(256,400),(400, 600),(600, 5)]).to(DEVICE)
-    print(net.parameters())
+    net = BayesianNetwork().to(DEVICE)
     optimizer = optim.Adam(net.parameters(), lr=0.0001)
     for epoch in range(epochs):
 
