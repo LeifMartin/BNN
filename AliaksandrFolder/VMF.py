@@ -422,8 +422,8 @@ class BayesianLinear(nn.Module):
 class BayesianNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        self.l1 = BayesianLinear(256, 400)
-        self.l2 = BayesianLinear(400, 600)
+        self.l1 = BayesianLinearLast(256, 400)
+        self.l2 = BayesianLinearLast(400, 600)
         self.l3 = BayesianLinearLast(600, 5)
 
     def forward(self, x, sample=False):
@@ -586,9 +586,9 @@ for i in range(0, 1):
         trtimes[epoch] = train(net, optimizer, epoch, i)
         print(net.l1.weight_mu.mean())
 
-    res = test_ensemble()
+    #res = test_ensemble()
 
-    np.savetxt("soundGmaccuracies_" + str(i) + ".csv", res, delimiter=",")
+    #np.savetxt("soundGmaccuracies_" + str(i) + ".csv", res, delimiter=",")
 
 #The code above could be moved to the notebook.
 

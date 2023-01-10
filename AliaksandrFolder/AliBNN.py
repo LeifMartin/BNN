@@ -26,7 +26,7 @@ sns.set_color_codes("muted")
 # select the device
 DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 LOADER_KWARGS = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-cuda = torch.cuda.set_device(1)
+#cuda = torch.cuda.set_device(1)
 
 if (torch.cuda.is_available()):
     print("GPUs are used!")
