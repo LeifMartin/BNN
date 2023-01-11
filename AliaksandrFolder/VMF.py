@@ -498,7 +498,7 @@ def train(net, optimizer, epoch, i):
     return totime
 
 
-def test_ensemble():
+def test_ensemble(net):
     net.eval()
     correct = 0
 
@@ -573,22 +573,22 @@ print("Classes loaded")
 
 # %%
 
-epochs = 125
-trtimes  = np.zeros(epochs)
-# make inference on 10 networks
-for i in range(0, 1):
-    print(i)
-    torch.manual_seed(i)
-    net = BayesianNetwork().to(DEVICE)
-    optimizer = optim.Adam(net.parameters(), lr=0.0001)
-    for epoch in range(epochs):
-
-        trtimes[epoch] = train(net, optimizer, epoch, i)
-        print(net.l1.weight_mu.mean())
-
-    #res = test_ensemble()
-
-    #np.savetxt("soundGmaccuracies_" + str(i) + ".csv", res, delimiter=",")
+#epochs = 125
+#trtimes  = np.zeros(epochs)
+## make inference on 10 networks
+#for i in range(0, 1):
+#    print(i)
+#    torch.manual_seed(i)
+#    net = BayesianNetwork().to(DEVICE)
+#    optimizer = optim.Adam(net.parameters(), lr=0.0001)
+#    for epoch in range(epochs):
+#
+#        trtimes[epoch] = train(net, optimizer, epoch, i)
+#        print(net.l1.weight_mu.mean())
+#
+#    #res = test_ensemble()
+#
+#    #np.savetxt("soundGmaccuracies_" + str(i) + ".csv", res, delimiter=",")
 
 #The code above could be moved to the notebook.
 
