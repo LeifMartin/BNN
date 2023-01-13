@@ -338,8 +338,6 @@ class HypersphericalUniform(object):
     
 
     
-
-    
 ###----------------------------------###   
 ###------The PRIOR IS ABOVE----------###
 ###----------------------------------###
@@ -420,43 +418,38 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
-    def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, b_mu1=None, b_mu2=None, b_mu3=None, l1=(256, 3), l2=(3, 3), l3=(3, 3),l4=(3, 3),l5=(3, 5), VD='Gaussian', BN='notbatchnorm'):
+    def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, b_mu1=None, b_mu2=None, b_mu3=None, l1=(256, 400), l2=(400, 600), l3=(600, 5), VD='Gaussian', BN='notbatchnorm'):
         super().__init__()
         l1_in, l1_out = l1
         l2_in, l2_out = l2
         l3_in, l3_out = l3
-        l4_in, l4_out = l4
-        l5_in, l5_out = l5
+        #l4_in, l4_out = l4
+        #l5_in, l5_out = l5
+        self.BN = BN
         if (VD == 'vmf'):
             self.l1 = BayesianLinear(l1_in, l1_out, w_mu1, b_mu1)
             self.l2 = BayesianLinear(l2_in, l2_out, w_mu2, b_mu2)
             self.l3 = BayesianLinear(l3_in, l3_out, w_mu3, b_mu3)
-            self.l4 = BayesianLinear(l4_in, l4_out, w_mu4, b_mu4)
-            self.l5 = BayesianLinear(l5_in, l5_out, w_mu5, b_mu5)
+            #self.l3 = BayesianLinearLast(l3_in, l3_out)
         else:
-            self.l1 = BayesianLinear(l1_in, l1_out)
-            self.l2 = BayesianLinear(l2_in, l2_out)
-            self.l3 = BayesianLinear(l3_in, l3_out)
-            self.l4 = BayesianLinear(l4_in, l4_out)
-            self.l5 = BayesianLinear(l5_in, l5_out)
-        
+            self.l1 = BayesianLinearLast(l1_in, l1_out)
+            self.l2 = BayesianLinearLast(l2_in, l2_out)
+            self.l3 = BayesianLinearLast(l3_in, l3_out)
+
     
     def forward(self, x, sample=False):
-        if (self.BN=='batchnorm'):
-            x = x.view(-1, 256)
-            x = F.batch_norm(F.relu(self.l1(x, sample)))
-            x = F.batch_norm(F.relu(self.l2(x, sample)))
-            x = F.batch_norm(F.relu(self.l3(x, sample)))
-            x = F.batch_norm(F.relu(self.l4(x, sample)))
-            x = F.batch_norm(F.log_softmax(self.l5(x, sample), dim=1))#self.l3(x, sample) 
-        else: 
+        if (self.BN=='notbatchnorm'):
             x = x.view(-1, 256)
             x = F.relu(self.l1(x, sample))
             x = F.relu(self.l2(x, sample))
-            x = F.relu(self.l3(x, sample))
-            x = F.relu(self.l4(x, sample))
-            x = F.log_softmax(self.l5(x, sample), dim=1)#self.l3(x, sample) 
+            x = F.log_softmax(self.l3(x, sample), dim=1)#self.l3(x, sample) 
+        else: 
+            x = x.view(-1, 256)
+            x = F.batch_norm(F.relu(self.l1(x, sample)))
+            x = F.batch_norm(F.relu(self.l2(x, sample)))
+            x = F.log_softmax(self.l3(x, sample), dim=1)#self.l3(x, sample) 
         return x
+            
 
     def log_prior(self):
         return self.l1.log_prior \
@@ -481,7 +474,6 @@ class BayesianNetwork(nn.Module):
         negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
         loss = (log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood
         return loss, log_prior, log_variational_posterior, negative_log_likelihood
-
 
 def write_weight_histograms(epoch, i):
     aaa = 5

@@ -210,7 +210,7 @@ class vMF(nn.Module):
 
     @property
     def kappa(self):
-        return self.logkappa.exp() + self.reg
+        return self.logkappa.exp().to(DEVICE) + self.reg
 
 
     def log_prob(self, x, utc=False):
@@ -424,11 +424,13 @@ class BayesianLinear(nn.Module):
         return F.linear(input, weight.reshape((self.in_features,self.out_features)).T, bias)
 
 class BayesianNetwork(nn.Module):
-    def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, b_mu1=None, b_mu2=None, b_mu3=None, l1=(256, 400), l2=(400, 600), l3=(600, 5), VD='Gaussian', BN='batchnorm'):
+    def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, b_mu1=None, b_mu2=None, b_mu3=None, l1=(256, 400), l2=(400, 600), l3=(600, 5), VD='Gaussian', BN='notbatchnorm'):
         super().__init__()
         l1_in, l1_out = l1
         l2_in, l2_out = l2
         l3_in, l3_out = l3
+        #l4_in, l4_out = l4
+        #l5_in, l5_out = l5
         self.BN = BN
         if (VD == 'vmf'):
             self.l1 = BayesianLinear(l1_in, l1_out, w_mu1, b_mu1)
@@ -442,7 +444,7 @@ class BayesianNetwork(nn.Module):
 
     
     def forward(self, x, sample=False):
-        if (self.BN=='batchnorm'):
+        if (self.BN=='notbatchnorm'):
             x = x.view(-1, 256)
             x = F.relu(self.l1(x, sample))
             x = F.relu(self.l2(x, sample))
