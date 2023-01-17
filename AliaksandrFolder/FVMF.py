@@ -390,9 +390,6 @@ class BayesianLinearLast(nn.Module):
 class BayesianLinear(nn.Module):
     def __init__(self, in_features, out_features, w_mu = None, b_mu=None, w_kappa=None,b_kappa=None):
         super().__init__()
-        if (w_mu == None or b_mu == None):
-            w_mu = torch.Tensor(out_features*in_features).uniform_(-0.2, 0.2)#In the Gaussian mu's (out,in) is the dimension, not out*in..
-            b_mu = torch.Tensor(out_features).uniform_(-0.2, 0.2)
         if (w_kappa == None):
             w_kappa = torch.Tensor(1).uniform_(4,9)
             b_kappa = torch.Tensor(1).uniform_(4,9)
@@ -476,6 +473,13 @@ class BayesianNetwork(nn.Module):
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None):
         super().__init__()
         num_layers = len(layershapes)
+        if (w_mu == None):
+            w_mu = []
+            b_mu = []
+            for layer in layershapes:
+                w_mu += [torch.Tensor(layer[0]*layer[1]).uniform_(-1, 1)]
+                #Gaussian's mu's (out,in) is the dimension, not out*in..
+                b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]                
         self.BN = BN
         layers = []
         if (VD == 'vmf'):
