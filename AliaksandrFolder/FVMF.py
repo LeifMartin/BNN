@@ -388,20 +388,22 @@ class BayesianLinearLast(nn.Module):
 
 
 class BayesianLinear(nn.Module):
-    def __init__(self, in_features, out_features, w_mu = None, b_mu=None):
+    def __init__(self, in_features, out_features, w_mu = None, b_mu=None, kappa=None):
         super().__init__()
         if (w_mu == None or b_mu == None):
             w_mu = torch.Tensor(out_features*in_features).uniform_(-0.2, 0.2)#In the Gaussian mu's (out,in) is the dimension, not out*in..
             b_mu = torch.Tensor(out_features).uniform_(-0.2, 0.2)
+        if (kappa == None):
+            kappa = torch.Tensor(1).uniform_(4,9)
         self.in_features = in_features
         self.out_features = out_features
         # Weight parameters
         self.weight_mu = nn.Parameter(w_mu, requires_grad=True).to(DEVICE)
-        self.weight_rho = nn.Parameter(torch.Tensor(1).uniform_(4,9), requires_grad=True).to(DEVICE)
+        self.weight_rho = nn.Parameter(kappa, requires_grad=True).to(DEVICE)
         self.weight =  vMF(self.weight_mu, logkappa=self.weight_rho, x_dim=out_features * in_features)
         # Bias parameters
         self.bias_mu = nn.Parameter(b_mu, requires_grad=True).to(DEVICE)
-        self.bias_rho = nn.Parameter(torch.Tensor(1).uniform_(4,9), requires_grad=True).to(DEVICE)
+        self.bias_rho = nn.Parameter(kappa, requires_grad=True).to(DEVICE)
         self.bias = vMF(self.bias_mu, logkappa=self.bias_rho, x_dim = out_features)
         # Prior distributions
         self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
@@ -426,53 +428,85 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
-    def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, w_mu4 = None, b_mu1=None, b_mu2=None, b_mu3=None, b_mu4=None, 
-                 l1=(256, 400), l2=(400, 600), l3=(600, 5),l4=(5,5), VD='Gaussian', BN='notbatchnorm'):
+    #def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, w_mu4 = None, b_mu1=None, b_mu2=None, b_mu3=None, b_mu4=None, 
+    #             l1=(256, 400), l2=(400, 600), l3=(600, 5),l4=(5,5), VD='Gaussian', BN='notbatchnorm'):
+    #    super().__init__()
+    #    l1_in, l1_out = l1
+    #    l2_in, l2_out = l2
+    #    l3_in, l3_out = l3
+    #    l4_in, l4_out = l4
+    #    #l5_in, l5_out = l5
+    #    self.BN = BN
+    #    if (VD == 'vmf'):
+    #        self.l1 = BayesianLinear(l1_in, l1_out, w_mu1, b_mu1)
+    #        self.l2 = BayesianLinear(l2_in, l2_out, w_mu2, b_mu2)
+    #        self.l3 = BayesianLinear(l3_in, l3_out, w_mu3, b_mu3)
+    #        self.l4 = BayesianLinear(l4_in, l4_out, w_mu4, b_mu4)
+    #        #self.l3 = BayesianLinearLast(l5_in, l5_out)
+    #    else:
+    #        self.l1 = BayesianLinearLast(l1_in, l1_out)
+    #        self.l2 = BayesianLinearLast(l2_in, l2_out)
+    #        self.l3 = BayesianLinearLast(l3_in, l3_out)
+    #        self.l4 = BayesianLinearLast(l4_in, l4_out)
+    
+    #def forward(self, x, sample=False):
+    #    
+    #        x = x.view(-1, 256)
+    #        x = F.relu(self.l1(x, sample))
+    #        x = F.relu(self.l2(x, sample))
+    #        #x = F.log_softmax(self.l3(x, sample), dim=1)
+    #        x = F.relu(self.l3(x, sample))#self.l3(x, sample) 
+    #        x = F.log_softmax(self.l4(x, sample), dim=1)
+    #    return x
+            
+
+    #def log_prior(self):
+    #    return self.l1.log_prior \
+    #           + self.l2.log_prior \
+    #           + self.l3.log_prior
+
+    #def log_variational_posterior(self):
+    #    return self.l1.log_variational_posterior \
+    #           + self.l2.log_variational_posterior \
+    #           + self.l3.log_variational_posterior
+    
+    
+    def __init__(self, layershapes, w_mu = None, b_mu=None, 
+                 VD='Gaussian', BN='notbatchnorm',kappa=None):
         super().__init__()
-        l1_in, l1_out = l1
-        l2_in, l2_out = l2
-        l3_in, l3_out = l3
-        l4_in, l4_out = l4
-        #l5_in, l5_out = l5
+        num_layers = len(layershapes)
         self.BN = BN
+        layers = []
         if (VD == 'vmf'):
-            self.l1 = BayesianLinear(l1_in, l1_out, w_mu1, b_mu1)
-            self.l2 = BayesianLinear(l2_in, l2_out, w_mu2, b_mu2)
-            self.l3 = BayesianLinear(l3_in, l3_out, w_mu3, b_mu3)
-            self.l4 = BayesianLinear(l4_in, l4_out, w_mu4, b_mu4)
+            for i,layer in enumerate(layershapes):
+                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], kappa)]
             #self.l3 = BayesianLinearLast(l5_in, l5_out)
         else:
-            self.l1 = BayesianLinearLast(l1_in, l1_out)
-            self.l2 = BayesianLinearLast(l2_in, l2_out)
-            self.l3 = BayesianLinearLast(l3_in, l3_out)
-            self.l4 = BayesianLinearLast(l4_in, l4_out)
-
+            for i,layer in enumerate(layershapes):
+                layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], kappa)]
+        self.layers = nn.Sequential(*layers)
+    
     
     def forward(self, x, sample=False):
-        if (self.BN=='notbatchnorm'):
-            x = x.view(-1, 256)
-            x = F.relu(self.l1(x, sample))
-            x = F.relu(self.l2(x, sample))
-            #x = F.log_softmax(self.l3(x, sample), dim=1)
-            x = F.relu(self.l3(x, sample))#self.l3(x, sample) 
-            x = F.log_softmax(self.l4(x, sample), dim=1)
-        else: 
-            x = x.view(-1, 256)
-            x = F.batch_norm(F.relu(self.l1(x, sample)))
-            x = F.batch_norm(F.relu(self.l2(x, sample)))
-            x = F.log_softmax(self.l3(x, sample), dim=1)#self.l3(x, sample) 
+        x = x.view(-1, 256)
+        for layer in self.layers:
+            x = F.relu(layer(x,sample))
+        x = F.log_softmax(x, dim=1)
         return x
             
 
     def log_prior(self):
-        return self.l1.log_prior \
-               + self.l2.log_prior \
-               + self.l3.log_prior
+        OUT = 0
+        for layer in self.layers:
+            OUT += layer.log_prior
+        
+        return OUT
 
     def log_variational_posterior(self):
-        return self.l1.log_variational_posterior \
-               + self.l2.log_variational_posterior \
-               + self.l3.log_variational_posterior
+        OUT = 0
+        for layer in self.layers:
+            OUT += layer.log_variational_posterior
+        return OUT
 
     def sample_elbo(self, input, target, samples=SAMPLES):
         outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
