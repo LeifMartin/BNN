@@ -388,22 +388,23 @@ class BayesianLinearLast(nn.Module):
 
 
 class BayesianLinear(nn.Module):
-    def __init__(self, in_features, out_features, w_mu = None, b_mu=None, kappa=None):
+    def __init__(self, in_features, out_features, w_mu = None, b_mu=None, w_kappa=None,b_kappa=None):
         super().__init__()
         if (w_mu == None or b_mu == None):
             w_mu = torch.Tensor(out_features*in_features).uniform_(-0.2, 0.2)#In the Gaussian mu's (out,in) is the dimension, not out*in..
             b_mu = torch.Tensor(out_features).uniform_(-0.2, 0.2)
-        if (kappa == None):
-            kappa = torch.Tensor(1).uniform_(4,9)
+        if (w_kappa == None):
+            w_kappa = torch.Tensor(1).uniform_(4,9)
+            b_kappa = torch.Tensor(1).uniform_(4,9)
         self.in_features = in_features
         self.out_features = out_features
         # Weight parameters
         self.weight_mu = nn.Parameter(w_mu, requires_grad=True).to(DEVICE)
-        self.weight_rho = nn.Parameter(kappa, requires_grad=True).to(DEVICE)
+        self.weight_rho = nn.Parameter(w_kappa, requires_grad=True).to(DEVICE)
         self.weight =  vMF(self.weight_mu, logkappa=self.weight_rho, x_dim=out_features * in_features)
         # Bias parameters
         self.bias_mu = nn.Parameter(b_mu, requires_grad=True).to(DEVICE)
-        self.bias_rho = nn.Parameter(kappa, requires_grad=True).to(DEVICE)
+        self.bias_rho = nn.Parameter(b_kappa, requires_grad=True).to(DEVICE)
         self.bias = vMF(self.bias_mu, logkappa=self.bias_rho, x_dim = out_features)
         # Prior distributions
         self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
@@ -472,18 +473,18 @@ class BayesianNetwork(nn.Module):
     
     
     def __init__(self, layershapes, w_mu = None, b_mu=None, 
-                 VD='Gaussian', BN='notbatchnorm',kappa=None):
+                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None):
         super().__init__()
         num_layers = len(layershapes)
         self.BN = BN
         layers = []
         if (VD == 'vmf'):
             for i,layer in enumerate(layershapes):
-                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], kappa)]
+                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], w_kappa, b_kappa)]
             #self.l3 = BayesianLinearLast(l5_in, l5_out)
         else:
             for i,layer in enumerate(layershapes):
-                layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], kappa)]
+                layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1])]
         self.layers = nn.Sequential(*layers)
     
     
