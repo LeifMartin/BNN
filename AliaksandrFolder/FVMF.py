@@ -397,11 +397,11 @@ class BayesianLinear(nn.Module):
         self.out_features = out_features
         # Weight parameters
         self.weight_mu = nn.Parameter(w_mu, requires_grad=True).to(DEVICE)
-        self.weight_rho = nn.Parameter(torch.Tensor(1).uniform_(1e-3,10), requires_grad=True).to(DEVICE)
+        self.weight_rho = nn.Parameter(torch.Tensor(1).uniform_(4,9), requires_grad=True).to(DEVICE)
         self.weight =  vMF(self.weight_mu, logkappa=self.weight_rho, x_dim=out_features * in_features)
         # Bias parameters
         self.bias_mu = nn.Parameter(b_mu, requires_grad=True).to(DEVICE)
-        self.bias_rho = nn.Parameter(torch.Tensor(1).uniform_(1e-3,10), requires_grad=True).to(DEVICE)
+        self.bias_rho = nn.Parameter(torch.Tensor(1).uniform_(4,9), requires_grad=True).to(DEVICE)
         self.bias = vMF(self.bias_mu, logkappa=self.bias_rho, x_dim = out_features)
         # Prior distributions
         self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
