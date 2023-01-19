@@ -360,7 +360,7 @@ class BayesianLinearLast(nn.Module):
         # Bias parameters
         self.bias_mu = nn.Parameter(torch.Tensor(out_features).uniform_(-0.2, 0.2), requires_grad=True)
         self.bias_rho = nn.Parameter(torch.Tensor(out_features).uniform_(-5, -4), requires_grad=True)
-        self.bias = Gaussian(self.bias_mu, self.bias_rho)
+        self.bias = Gaussian(self.bias_mu, self.bias_rho) #The variance is on log-scale, so negative input is just a very small variance.
         # Prior distributions
         #self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
         self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
@@ -389,11 +389,12 @@ class BayesianLinearLast(nn.Module):
 class BayesianLinear(nn.Module):
     def __init__(self, in_features, out_features, w_mu = None, b_mu=None):
         super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
         if (w_mu == None or b_mu == None):
             w_mu = torch.Tensor(out_features*in_features).uniform_(-0.2, 0.2)#In the Gaussian mu's (out,in) is the dimension, not out*in..
             w_mu = b_mu=torch.Tensor(out_features).uniform_(-0.2, 0.2)
-        self.in_features = in_features
-        self.out_features = out_features
+        
         # Weight parameters
         self.weight_mu = nn.Parameter(w_mu, requires_grad=True).to(DEVICE)
         self.weight_rho = nn.Parameter(torch.Tensor(1).uniform_(1,10), requires_grad=True).to(DEVICE)

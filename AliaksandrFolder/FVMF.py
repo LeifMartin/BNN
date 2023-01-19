@@ -357,12 +357,12 @@ class BayesianLinearLast(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         # Weight parameters
-        self.weight_mu = nn.Parameter(torch.Tensor(out_features, in_features).uniform_(-0.2, 0.2), requires_grad=True)#.reshape(out_features * in_features).to(DEVICE)
-        self.weight_rho = nn.Parameter(torch.Tensor(out_features, in_features).uniform_(-5, -4), requires_grad=True)#.reshape(out_features * in_features).to(DEVICE)
+        self.weight_mu = nn.Parameter(torch.Tensor(out_features, in_features).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE)
+        self.weight_rho = nn.Parameter(torch.Tensor(out_features, in_features).uniform_(-5, -4), requires_grad=True).to(DEVICE)
         self.weight = Gaussian(self.weight_mu, self.weight_rho)
         # Bias parameters
-        self.bias_mu = nn.Parameter(torch.Tensor(out_features).uniform_(-0.2, 0.2), requires_grad=True)
-        self.bias_rho = nn.Parameter(torch.Tensor(out_features).uniform_(-5, -4), requires_grad=True)
+        self.bias_mu = nn.Parameter(torch.Tensor(out_features).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE)
+        self.bias_rho = nn.Parameter(torch.Tensor(out_features).uniform_(-5, -4), requires_grad=True).to(DEVICE)
         self.bias = Gaussian(self.bias_mu, self.bias_rho)
         # Prior distributions
         self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
@@ -388,21 +388,17 @@ class BayesianLinearLast(nn.Module):
 
 
 class BayesianLinear(nn.Module):
-    def __init__(self, in_features, out_features, w_mu = None, b_mu=None, w_kappa=None,b_kappa=None):
+    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
         super().__init__()
-        if (w_kappa == None):
-            w_kappa = torch.Tensor(1).uniform_(4,9)
-            b_kappa = torch.Tensor(1).uniform_(4,9)
         self.in_features = in_features
         self.out_features = out_features
-        # Weight parameters
-        self.weight_mu = nn.Parameter(w_mu, requires_grad=True).to(DEVICE)
-        self.weight_rho = nn.Parameter(w_kappa, requires_grad=True).to(DEVICE)
-        self.weight =  vMF(self.weight_mu, logkappa=self.weight_rho, x_dim=out_features * in_features)
-        # Bias parameters
-        self.bias_mu = nn.Parameter(b_mu, requires_grad=True).to(DEVICE)
-        self.bias_rho = nn.Parameter(b_kappa, requires_grad=True).to(DEVICE)
-        self.bias = vMF(self.bias_mu, logkappa=self.bias_rho, x_dim = out_features)
+        
+
+        self.weight =  vMF(weight_mu, logkappa=weight_rho, x_dim=out_features * in_features)
+        
+        
+        self.bias = vMF(bias_mu, logkappa=bias_rho, x_dim = out_features)
+        
         # Prior distributions
         self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
         self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)
@@ -473,22 +469,38 @@ class BayesianNetwork(nn.Module):
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None):
         super().__init__()
         num_layers = len(layershapes)
-        if (w_mu == None):
-            w_mu = []
-            b_mu = []
-            for layer in layershapes:
-                w_mu += [torch.Tensor(layer[0]*layer[1]).uniform_(-1, 1)]
-                #Gaussian's mu's (out,in) is the dimension, not out*in..
-                b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]                
+        #if (w_mu == None) or (b_mu == None):
+        #    w_mu = []
+        #    b_mu = []
+        #    for layer in layershapes:
+        #        w_mu += [torch.Tensor(layer[0]*layer[1]).uniform_(-1, 1)]
+        #        #Gaussian's mu's (out,in) is the dimension, not out*in..
+        #        b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]
+        
+        if (w_mu == None) or (b_mu == None):
+            
+            self.weight_mu  = [nn.Parameter(torch.Tensor(layershapes[i][1]*layershapes[i][0]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            
+            self.bias_mu    = [nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+        else:
+            
+            self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+
         self.BN = BN
         layers = []
         if (VD == 'vmf'):
             for i,layer in enumerate(layershapes):
-                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], w_mu[i], b_mu[i], w_kappa, b_kappa)]
-            #self.l3 = BayesianLinearLast(l5_in, l5_out)
+                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
+            
         else:
             for i,layer in enumerate(layershapes):
                 layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1])]
+        
         self.layers = nn.Sequential(*layers)
     
     
