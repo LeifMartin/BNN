@@ -626,15 +626,10 @@ print("Classes loaded")
 
 r"""This part is commented out from Aliaksandrs code since I don't need it.
 net = BayesianNetwork().to(DEVICE)
-
-
 def write_weight_histograms(epoch, i):
     aaa = 5
-
-
 def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
     aaa = 5
-
 """
 # %%
 

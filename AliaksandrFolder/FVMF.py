@@ -422,6 +422,48 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNetwork(nn.Module):
+    #def __init__(self, w_mu1 = None, w_mu2 = None, w_mu3 = None, w_mu4 = None, b_mu1=None, b_mu2=None, b_mu3=None, b_mu4=None, 
+    #             l1=(256, 400), l2=(400, 600), l3=(600, 5),l4=(5,5), VD='Gaussian', BN='notbatchnorm'):
+    #    super().__init__()
+    #    l1_in, l1_out = l1
+    #    l2_in, l2_out = l2
+    #    l3_in, l3_out = l3
+    #    l4_in, l4_out = l4
+    #    #l5_in, l5_out = l5
+    #    self.BN = BN
+    #    if (VD == 'vmf'):
+    #        self.l1 = BayesianLinear(l1_in, l1_out, w_mu1, b_mu1)
+    #        self.l2 = BayesianLinear(l2_in, l2_out, w_mu2, b_mu2)
+    #        self.l3 = BayesianLinear(l3_in, l3_out, w_mu3, b_mu3)
+    #        self.l4 = BayesianLinear(l4_in, l4_out, w_mu4, b_mu4)
+    #        #self.l3 = BayesianLinearLast(l5_in, l5_out)
+    #    else:
+    #        self.l1 = BayesianLinearLast(l1_in, l1_out)
+    #        self.l2 = BayesianLinearLast(l2_in, l2_out)
+    #        self.l3 = BayesianLinearLast(l3_in, l3_out)
+    #        self.l4 = BayesianLinearLast(l4_in, l4_out)
+    
+    #def forward(self, x, sample=False):
+    #    
+    #        x = x.view(-1, 256)
+    #        x = F.relu(self.l1(x, sample))
+    #        x = F.relu(self.l2(x, sample))
+    #        #x = F.log_softmax(self.l3(x, sample), dim=1)
+    #        x = F.relu(self.l3(x, sample))#self.l3(x, sample) 
+    #        x = F.log_softmax(self.l4(x, sample), dim=1)
+    #    return x
+            
+
+    #def log_prior(self):
+    #    return self.l1.log_prior \
+    #           + self.l2.log_prior \
+    #           + self.l3.log_prior
+
+    #def log_variational_posterior(self):
+    #    return self.l1.log_variational_posterior \
+    #           + self.l2.log_variational_posterior \
+    #           + self.l3.log_variational_posterior
+    
     
     def __init__(self, layershapes, w_mu = None, b_mu=None, 
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None):
@@ -436,20 +478,18 @@ class BayesianNetwork(nn.Module):
         #        b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]
         
         if (w_mu == None) or (b_mu == None):
-            w_mu = []
-            b_mu = []
             
-            self.weight_mu  = [nn.Parameter(torch.Tensor(layershapes[i][1]*layershapes[i][0]).uniform_(-2, 5), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.weight_mu  = [nn.Parameter(torch.Tensor(layershapes[i][1]*layershapes[i][0]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
             self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
             
-            self.bias_mu    = [nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-2, 5), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_mu    = [nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
             self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
         else:
             
-            self.weight_mu  = [w_mu[i].to(DEVICE) for i in range(len(layershapes))]
-            self.weight_rho = [w_kappa.to(DEVICE) for i in range(len(layershapes))]
-            self.bias_mu    = [b_mu[i].to(DEVICE) for i in range(len(layershapes))]
-            self.bias_rho   = [b_kappa.to(DEVICE) for i in range(len(layershapes))]
+            self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
 
         self.BN = BN
         layers = []
@@ -617,13 +657,8 @@ print("Classes loaded")
 
 r"""This part is commented out from Aliaksandrs code since I don't need it.
 net = BayesianNetwork().to(DEVICE)
-
-
 def write_weight_histograms(epoch, i):
     aaa = 5
-
-
 def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
     aaa = 5
-
 """
