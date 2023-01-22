@@ -417,14 +417,76 @@ class BayesianLinear(nn.Module):
             self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
         else:
             self.log_prior, self.log_variational_posterior = 0, 0
+        #print('weight.shape:',weight.shape)
+        #print('weight.reshape:',weight.reshape((self.in_features,self.out_features)).T.shape,'\n')
+        
+        ForwardPass = F.linear(input=input, weight=weight.reshape((self.in_features,self.out_features)).T, bias=bias)
+        #TORCH.NN.FUNCTIONAL.LINEAR is not the same as TORCH.NN.LINEAR
+        
+        
+        return ForwardPass
+    
+    
+#Boit
+r"""
+From the Gaussian:
+w_mu1 = net.l1.weight_mu
+w_mu1 = w_mu1.reshape(l1shape[0]*l1shape[1]).to(DEVICE)
+#net.l1.weight_rho
+b_mu1 = net.l1.bias_mu.to(DEVICE) #400
+#net.l1.bias_rho
+"""
+    
+class vMF_NodeWise(nn.Module):
+    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        self.weight = []
+        #self.weight = torch.Tensor(out_features, in_features) #This should not be a tensor!
+        for i in range(self.out_features):
+            self.weight +=  [vMF(weight_mu[i], logkappa=weight_rho, x_dim=in_features)] #This putting things into lists might trip up
+            #The torch parameter autograd stuff...
+        
+        
+        self.bias = vMF(bias_mu, logkappa=bias_rho, x_dim = out_features)
+        
+        # Prior distributions
+        self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
+        self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)
+        self.log_prior = 0
+        self.log_variational_posterior = 0
 
-        return F.linear(input, weight.reshape((self.in_features,self.out_features)).T, bias)
+    def forward(self, input, sample=False, calculate_log_probs=False):
+        weight = torch.Tensor(self.out_features, self.in_features).to(DEVICE)
+        if self.training or sample:
+            for i in range(self.out_features):
+                weight[i] = self.weight[i].sample()
+            bias = self.bias.sample()
+        else:
+            for i in range(self.out_features):
+                weight[i] = self.weight[i].mu
+            bias = self.bias.mu
+        if self.training or calculate_log_probs:
+            self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
+            self.log_variational_posterior = self.bias.log_prob(bias)
+            for i in range(self.out_features):
+                self.log_variational_posterior += self.weight[i].log_prob(weight[i])
+        else:
+            self.log_prior, self.log_variational_posterior = 0, 0
+        
+        ForwardPass = F.linear(input=input, weight=weight, bias=bias)
+        #TORCH.NN.FUNCTIONAL.LINEAR is not the same as TORCH.NN.LINEAR
+        
+        
+        return ForwardPass
 
 
 class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes, w_mu = None, b_mu=None, 
-                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None):
+                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -434,6 +496,8 @@ class BayesianNetwork(nn.Module):
         #        w_mu += [torch.Tensor(layer[0]*layer[1]).uniform_(-1, 1)]
         #        #Gaussian's mu's (out,in) is the dimension, not out*in..
         #        b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]
+        
+        self.Temper = Temper
         
         if (w_mu == None) or (b_mu == None):
             
@@ -453,7 +517,7 @@ class BayesianNetwork(nn.Module):
         layers = []
         if (VD == 'vmf'):
             for i,layer in enumerate(layershapes):
-                layers += [BayesianLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
+                layers += [vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
             
         else:
             for i,layer in enumerate(layershapes):
@@ -494,7 +558,12 @@ class BayesianNetwork(nn.Module):
         log_prior = log_priors.mean()
         log_variational_posterior = log_variational_posteriors.mean()
         negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
-        loss = (log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood
+        if (self.Temper == 1):
+            loss = (log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood
+        else:
+            loss = self.Temper*((log_variational_posterior - log_prior) / NUM_BATCHES) + negative_log_likelihood
+            #print('loss:',loss)
+            #print('utempered loss:',(log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood,'\n')
         return loss, log_prior, log_variational_posterior, negative_log_likelihood
 
 def write_weight_histograms(epoch, i):
