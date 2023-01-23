@@ -469,7 +469,7 @@ class vMF_NodeWise(nn.Module):
                 weight[i] = self.weight[i].mu
             bias = self.bias.mu
         if self.training or calculate_log_probs:
-            self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
+            self.log_prior = 0# self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
             self.log_variational_posterior = self.bias.log_prob(bias)
             for i in range(self.out_features):
                 self.log_variational_posterior += self.weight[i].log_prob(weight[i])
