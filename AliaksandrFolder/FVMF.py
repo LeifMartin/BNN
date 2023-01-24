@@ -363,10 +363,12 @@ class BayesianLinearLast(nn.Module):
         # Bias parameters
         self.bias_mu = nn.Parameter(torch.Tensor(out_features).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE)
         self.bias_rho = nn.Parameter(torch.Tensor(out_features).uniform_(-5, -4), requires_grad=True).to(DEVICE)
-        self.bias = Gaussian(self.bias_mu, self.bias_rho)
+        self.bias = Gaussian(self.bias_mu, self.bias_rho) #The variance is on log-scale, so negative input is just a very small variance.
         # Prior distributions
+        #self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
         self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
         self.bias_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
+        #self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)#
         self.log_prior = 0
         self.log_variational_posterior = 0
 
@@ -384,7 +386,6 @@ class BayesianLinearLast(nn.Module):
             self.log_prior, self.log_variational_posterior = 0, 0
 
         return F.linear(input, weight, bias)
-
 
 
 class BayesianLinear(nn.Module):
@@ -518,12 +519,19 @@ class BayesianNetwork(nn.Module):
         if (VD == 'vmf'):
             for i,layer in enumerate(layershapes):
                 layers += [vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
+            self.layers = nn.Sequential(*layers)
+            print('\n','nn.sequential.layers:',list(self.layers.parameters()))
             
         else:
+            self.layers = nn.ModuleList()
             for i,layer in enumerate(layershapes):
-                layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1])]
+                self.layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1])]
+                print('\n','layers:',list(self.layers[i].parameters()))
+                #, weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
+            #self.layers = nn.Sequential(*layers) #(layer[0],layer[1],..)
+            print('\n','nn.sequential.layers:',list(self.layers.parameters()))
+            
         
-        self.layers = nn.Sequential(*layers)
     
     
     def forward(self, x, sample=False):
