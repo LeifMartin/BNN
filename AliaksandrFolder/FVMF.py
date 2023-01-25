@@ -538,11 +538,11 @@ class BayesianNetwork(nn.Module):
             #Initialization of weights and biases
             if (w_mu == None) or (b_mu == None):
                 print('Random Init Utilized')
-                self.weight_mu  = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], layershapes[i][0]).uniform_(-0.2, 0.2),
+                self.weight_mu  = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], layershapes[i][0]).uniform_(-2, 2),
                                                                  requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
                 self.weight_rho = nn.ParameterList([nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
             
-                self.bias_mu    = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2),
+                self.bias_mu    = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-2, 2),
                                                                  requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
                 self.bias_rho   = nn.ParameterList([nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
             else:
@@ -553,8 +553,9 @@ class BayesianNetwork(nn.Module):
                 self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
             
             #Initialization of layers.
+            self.layers = nn.ModuleList()
             for i,layer in enumerate(layershapes):
-                layers += [vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
+                layers.append(vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
             self.layers = nn.Sequential(*layers)
             #print('\n','nn.sequential.layers:',list(self.layers.parameters()))
             
