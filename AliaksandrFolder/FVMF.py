@@ -343,10 +343,10 @@ class HypersphericalUniform(object):
     
     def log_prob(self, x):
         return -torch.ones(x.shape[:-1], device=self.device) * self.__log_surface_area()
-    
 
-    
-###----------------------------------###   
+
+
+###----------------------------------###
 ###------The PRIOR IS ABOVE----------###
 ###----------------------------------###
 
@@ -387,8 +387,48 @@ class BayesianLinearLast(nn.Module):
 
         return F.linear(input, weight, bias)
 
+class GaussianLinear(nn.Module):
+    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        self.weight_mu = weight_mu
+        self.weight_rho = weight_rho
+        
+        self.bias_mu = bias_mu
+        self.bias_rho = bias_rho
 
-class BayesianLinear(nn.Module):
+        self.weight = Gaussian(self.weight_mu, self.weight_rho)
+
+
+        self.bias = Gaussian(self.bias_mu, self.bias_rho) #The variance is on log-scale, so negative input is just a very small variance.
+        # Prior distributions
+        #self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
+        self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
+        self.bias_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2)
+        #self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)#
+        self.log_prior = 0
+        self.log_variational_posterior = 0
+
+    def forward(self, input, sample=False, calculate_log_probs=False):
+        if self.training or sample:
+            weight = self.weight.sample()
+            bias = self.bias.sample()
+        else:
+            weight = self.weight.mu
+            bias = self.bias.mu
+        if self.training or calculate_log_probs:
+            self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
+            self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
+        else:
+            self.log_prior, self.log_variational_posterior = 0, 0
+
+        return F.linear(input, weight, bias)
+    
+    
+    
+class vMF_Layerwise(nn.Module):
     def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
         super().__init__()
         self.in_features = in_features
@@ -426,19 +466,8 @@ class BayesianLinear(nn.Module):
         
         
         return ForwardPass
-    
-    
-#Boit
-r"""
-From the Gaussian:
-w_mu1 = net.l1.weight_mu
-w_mu1 = w_mu1.reshape(l1shape[0]*l1shape[1]).to(DEVICE)
-#net.l1.weight_rho
-b_mu1 = net.l1.bias_mu.to(DEVICE) #400
-#net.l1.bias_rho
-"""
-    
-class vMF_NodeWise(nn.Module):
+
+class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we need it since it is constant.
     def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
         super().__init__()
         self.in_features = in_features
@@ -500,36 +529,69 @@ class BayesianNetwork(nn.Module):
         
         self.Temper = Temper
         
-        if (w_mu == None) or (b_mu == None):
-            
-            self.weight_mu  = [nn.Parameter(torch.Tensor(layershapes[i][1]*layershapes[i][0]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            
-            self.bias_mu    = [nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2), requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-        else:
-            
-            self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-            self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
 
         self.BN = BN
         layers = []
+        
         if (VD == 'vmf'):
+            
+            #Initialization of weights and biases
+            if (w_mu == None) or (b_mu == None):
+                print('Random Init Utilized')
+                self.weight_mu  = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], layershapes[i][0]).uniform_(-0.2, 0.2),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                self.weight_rho = nn.ParameterList([nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            
+                self.bias_mu    = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                self.bias_rho   = nn.ParameterList([nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            else:
+            
+                self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            
+            #Initialization of layers.
             for i,layer in enumerate(layershapes):
                 layers += [vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
             self.layers = nn.Sequential(*layers)
             print('\n','nn.sequential.layers:',list(self.layers.parameters()))
             
         else:
+            #Initialization of weights and biases
+            if (w_mu == None) or (b_mu == None):
+                if (w_kappa == None) or (b_kappa == None):
+                    w_kappa = (-5, -4)
+                    b_kappa = (-5, -4)
+                
+                print('Random Init Utilized')
+                self.weight_mu  = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], layershapes[i][0]).uniform_(-0.2, 0.2),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                self.weight_rho = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], 
+                                                                              layershapes[i][0]).uniform_(w_kappa[0],w_kappa[1]), 
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            
+                self.bias_mu    = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                self.bias_rho   = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(b_kappa[0],b_kappa[1]),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            else:
+            
+                self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+            
+            #Initialization of layers.
             self.layers = nn.ModuleList()
             for i,layer in enumerate(layershapes):
-                self.layers += [BayesianLinearLast(layershapes[i][0], layershapes[i][1])]
-                print('\n','layers:',list(self.layers[i].parameters()))
+                self.layers.append(GaussianLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i],
+                                                  weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
+                #print('\n','layers:',list(self.layers.named_parameters()))
                 #, weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
             #self.layers = nn.Sequential(*layers) #(layer[0],layer[1],..)
-            print('\n','nn.sequential.layers:',list(self.layers.parameters()))
+            #print('\n','nn.sequential.layers:', list(self.layers.parameters()))
             
         
     
