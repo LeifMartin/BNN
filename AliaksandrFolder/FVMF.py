@@ -556,7 +556,7 @@ class BayesianNetwork(nn.Module):
             for i,layer in enumerate(layershapes):
                 layers += [vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
             self.layers = nn.Sequential(*layers)
-            print('\n','nn.sequential.layers:',list(self.layers.parameters()))
+            #print('\n','nn.sequential.layers:',list(self.layers.parameters()))
             
         else:
             #Initialization of weights and biases
