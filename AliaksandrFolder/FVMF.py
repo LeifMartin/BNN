@@ -236,8 +236,8 @@ class vMF(nn.Module):
         else:
             logC = vMFLogPartition.apply(self.x_dim, self.kappa)
             logliks = self.kappa * dotp + logC
-
-        return logliks
+        #print(torch.distributions.normal.Normal(1,0.5).log_prob(norm(x))[0].exp())
+        return logliks#*torch.distributions.normal.Normal(1,0.5).log_prob(norm(x))
 
     def sample(self, N=1, rsf=10):
 
@@ -472,7 +472,8 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        
+        self.bias_mu = bias_mu
+        self.weight_mu = weight_mu
         self.weight = []
         #self.weight = torch.Tensor(out_features, in_features) #This should not be a tensor!
         for i in range(self.out_features):
@@ -488,7 +489,7 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
         self.log_prior = 0
         self.log_variational_posterior = 0
 
-    def forward(self, input, sample=False, calculate_log_probs=False):
+    def forward(self, input, sample=True, calculate_log_probs=False):
         weight = torch.Tensor(self.out_features, self.in_features).to(DEVICE)
         if self.training or sample:
             for i in range(self.out_features):
@@ -499,9 +500,13 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
                 weight[i] = self.weight[i].mu
             bias = self.bias.mu
         if self.training or calculate_log_probs:
+            #norm_b_mu= torch.distributions.normal.Normal(1,0.5).log_prob(norm(self.bias_mu[i]))[0].exp()
+            #print('norm_b_mu:',norm_b_mu,'\n')
             self.log_prior = 0# self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
             self.log_variational_posterior = self.bias.log_prob(bias)
             for i in range(self.out_features):
+                #norm_w_mu = torch.distributions.normal.Normal(1,0.5).log_prob(norm(self.weight_mu[i]))[0].exp()
+                #print('norm_w_mu:',norm_w_mu,'\n')
                 self.log_variational_posterior += self.weight[i].log_prob(weight[i])
         else:
             self.log_prior, self.log_variational_posterior = 0, 0
@@ -597,7 +602,7 @@ class BayesianNetwork(nn.Module):
         
     
     
-    def forward(self, x, sample=False):
+    def forward(self, x, sample=True):
         x = x.view(-1, 256)
         for layer in self.layers:
             x = F.relu(layer(x,sample))
@@ -661,19 +666,20 @@ def train(net, optimizer, epoch, i):
 
         net.zero_grad()
         loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target)
-        start = time.time()
+        #start = time.time()
         loss.backward()
-        end = time.time()
-        totime = totime + (end - start)
+        #end = time.time()
+        #totime = totime + (end - start)
 
-        start = time.time()
+        #start = time.time()
         optimizer.step()
-        end = time.time()
-        totime = totime + (end - start)
+        
+        #end = time.time()
+        #totime = totime + (end - start)
 
     print(epoch + 1)
-    print(loss)
-    print(negative_log_likelihood)
+    print('loss:',loss)
+    print('negative_log_likelihood:',negative_log_likelihood)
     return totime
 
 
