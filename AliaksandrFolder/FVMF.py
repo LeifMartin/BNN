@@ -50,38 +50,6 @@ TEMPER_PRIOR = 0.001
 epochs = 250
 pepochs = 50
 
-#prepare the data
-data = pd.read_csv('http://www.uio.no/studier/emner/matnat/math/STK2100/data/phoneme.data')
-data = data.drop(columns=["row.names"])
-data = pd.concat([data,data.g.astype("category").cat.codes.astype(int)],sort=False, axis=1) #get_dummies(data['g'], prefix='phoneme')],sort=False, axis=1)
-data = data.drop(columns=["g","speaker"])
-data = data.values
-
-
-np.random.seed(40590)
-
-tr_ids = np.random.choice(4509, 3500, replace = False)
-te_ids = np.setdiff1d(np.arange(4509),tr_ids)[0:1000]
-
-dtrain = data[tr_ids,:]
-
-data_mean = dtrain.mean(axis=0)[0:256]
-data_std = dtrain.std(axis=0)[0:256]
-
-data[:,0:256] = (data[:,0:256]  - data_mean)/data_std
-
-
-
-
-dtrain = data[tr_ids,:]
-dtest = data[te_ids,:]
-
-
-TRAIN_SIZE = len(tr_ids)
-TEST_SIZE = len(te_ids)
-NUM_BATCHES = TRAIN_SIZE/BATCH_SIZE
-NUM_TEST_BATCHES = len(te_ids)/BATCH_SIZE
-
 # set prior parameters
 PI = 1
 SIGMA_1 = torch.cuda.FloatTensor([math.exp(-0)])
@@ -520,7 +488,7 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
 
 class BayesianNetwork(nn.Module):
     
-    def __init__(self, layershapes, w_mu = None, b_mu=None, 
+    def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1):
         super().__init__()
         num_layers = len(layershapes)
@@ -533,7 +501,7 @@ class BayesianNetwork(nn.Module):
         #        b_mu += [torch.Tensor(layer[1]).uniform_(-1, 1)]
         
         self.Temper = Temper
-        
+        self.dtrain = dtrain
 
         self.BN = BN
         layers = []
@@ -650,7 +618,7 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net, optimizer, epoch, i):
+def train(net,dtrain, optimizer, epoch, i):
     old_batch = 0
     totime = 0
     for batch in range(int(np.ceil(dtrain.shape[0] / batch_size))):
@@ -683,76 +651,7 @@ def train(net, optimizer, epoch, i):
     return totime
 
 
-def test_ensemble(net):
-    net.eval()
-    correct = 0
 
-    correct3 = 0
-    cases3 = 0
-
-
-    corrects = np.zeros(TEST_SAMPLES + 1, dtype=int)
-    with torch.no_grad():
-        old_batch = 0
-        for batch in range(int(np.ceil(dtest.shape[0] / batch_size))):
-            batch = (batch + 1)
-            _x = dtest[old_batch: batch_size * batch, 0:256]
-            _y = dtest[old_batch: batch_size * batch, 256:257]
-
-            old_batch = batch_size * batch
-
-            # print(_x.shape)
-            # print(_y.shape)
-
-            data = Variable(torch.FloatTensor(_x)).cuda()
-            target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
-
-            outputs = torch.zeros(TEST_SAMPLES + 1, TEST_BATCH_SIZE, CLASSES).to(DEVICE)
-            for i in range(TEST_SAMPLES):
-                outputs[i] = net(data, sample=True)
-
-                if (i == 0):
-                    mydata_means = sigmoid(outputs[i].detach().cpu().numpy())
-                    for j in range(TEST_BATCH_SIZE):
-                        mydata_means[j] /= np.sum(mydata_means[j])
-                else:
-                    tmp = sigmoid(outputs[i].detach().cpu().numpy())
-                    for j in range(TEST_BATCH_SIZE):
-                        tmp[j] /= np.sum(tmp[j])
-                    # print(sum(tmp[j]))
-                    mydata_means = mydata_means + tmp
-
-            mydata_means /= TEST_SAMPLES
-
-            outputs[TEST_SAMPLES] = net(data, sample=False)
-            output = outputs[0:TEST_SAMPLES].mean(0)
-            preds = outputs.max(2, keepdim=True)[1]
-            pred = output.max(1, keepdim=True)[1]  # index of max log-probability
-            corrects += preds.eq(target.view_as(pred)).sum(dim=1).squeeze().cpu().numpy()
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-
-
-            # print(mydata_means[1][1])
-            for jj in range(TEST_BATCH_SIZE):
-                if mydata_means[jj][pred.detach().cpu().numpy()[jj]] >= 0.95:
-                    correct3 += pred[jj].eq(target.view_as(pred)[jj]).sum().item()
-                    cases3 += 1
-
-            if cases3 == 0:
-                cases3 += 1
-
-    for index, num in enumerate(corrects):
-        if index < TEST_SAMPLES:
-            print('Component {} Accuracy: {}/{}'.format(index, num, TEST_SIZE))
-        else:
-            print('Posterior Mean Accuracy: {}/{}'.format(num, TEST_SIZE))
-    print('Ensemble Accuracy: {}/{}'.format(correct, TEST_SIZE))
-    corrects = np.append(corrects, correct)
-    corrects = np.append(corrects, correct3 / cases3)
-    corrects = np.append(corrects, cases3)
-
-    return corrects
 
 print("Classes loaded")
 
