@@ -619,13 +619,14 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net, dtrain, NUM_BATCHES, SAMPLES, optimizer, epoch, i):
+def train(net, dtrain, NUM_BATCHES, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257)):
     old_batch = 0
     totime = 0
     for batch in range(int(np.ceil(dtrain.shape[0] / batch_size))):
         batch = (batch + 1)
-        _x = dtrain[old_batch: batch_size * batch, 0:256]
-        _y = dtrain[old_batch: batch_size * batch, 256:257]
+        _x = dtrain[old_batch: batch_size * batch, shape[0]:shape[1]]
+        _y = dtrain[old_batch: batch_size * batch, shape[2]:shape[3]]
+        
         old_batch = batch_size * batch
         # print(_x.shape)
         # print(_y.shape)
