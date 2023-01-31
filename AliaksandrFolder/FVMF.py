@@ -502,7 +502,8 @@ class BayesianNetwork(nn.Module):
         
         self.Temper = Temper
         self.dtrain = dtrain
-
+        #self.dtest  = dtest
+        
         self.BN = BN
         layers = []
         
@@ -591,7 +592,7 @@ class BayesianNetwork(nn.Module):
             OUT += layer.log_variational_posterior
         return OUT
 
-    def sample_elbo(self, input, target, samples=SAMPLES):
+    def sample_elbo(self, input, target, NUM_BATCHES, samples):
         outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
         log_priors = torch.zeros(samples).to(DEVICE)
         log_variational_posteriors = torch.zeros(samples).to(DEVICE)
@@ -618,7 +619,7 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net,dtrain, optimizer, epoch, i):
+def train(net, dtrain, NUM_BATCHES, SAMPLES, optimizer, epoch, i):
     old_batch = 0
     totime = 0
     for batch in range(int(np.ceil(dtrain.shape[0] / batch_size))):
@@ -633,7 +634,7 @@ def train(net,dtrain, optimizer, epoch, i):
         target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
 
         net.zero_grad()
-        loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target)
+        loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target,NUM_BATCHES,SAMPLES)
         #start = time.time()
         loss.backward()
         #end = time.time()
