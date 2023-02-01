@@ -499,8 +499,9 @@ class BayesianNetwork(nn.Module):
         
         self.Temper = Temper
         self.dtrain = dtrain
-        #self.dtest  = dtest
+        self.dtest  = dtest
         self.BATCH_SIZE = BATCH_SIZE
+        self.layershapes = layershapes
         
         self.BN = BN
         layers = []
@@ -570,7 +571,11 @@ class BayesianNetwork(nn.Module):
     
     
     def forward(self, x, sample=True):
-        x = x.view(-1, 256)
+        print(self.layershapes[-1][-1])
+        print(self.dtrain.shape[1])
+        viewstop = self.dtrain.shape[1]-self.layershapes[-1][-1]
+        print(viewstop)
+        x = x.view(-1, viewstop)
         for layer in self.layers:
             x = F.relu(layer(x,sample))
         x = F.log_softmax(x, dim=1)
@@ -622,6 +627,9 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
     totime = 0
     TRAIN_SIZE = len(dtrain)
     NUM_BATCHES = TRAIN_SIZE/BATCH_SIZE
+    Numpy = 1
+    if torch.is_tensor(dtrain):
+        Numpy = 0
     for batch in range(int(np.ceil(dtrain.shape[0] / BATCH_SIZE))):
         batch = (batch + 1)
         _x = dtrain[old_batch: BATCH_SIZE * batch, shape[0]:shape[1]]
@@ -632,9 +640,12 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
         old_batch = BATCH_SIZE * batch
         # print(_x.shape)
         # print(_y.shape)
-
-        data = Variable(torch.FloatTensor(_x)).cuda()
-        target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
+        if Numpy:
+            data = Variable(torch.FloatTensor(_x)).cuda()
+            target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
+        else:
+            data   = _x
+            target = _y
 
         net.zero_grad()
         loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target,NUM_BATCHES,SAMPLES)
@@ -658,14 +669,3 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
 
 
 print("Classes loaded")
-
-# %%
-#The code above could be moved to the notebook.
-
-r"""This part is commented out from Aliaksandrs code since I don't need it.
-net = BayesianNetwork().to(DEVICE)
-def write_weight_histograms(epoch, i):
-    aaa = 5
-def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_posterior, negative_log_likelihood):
-    aaa = 5
-"""
