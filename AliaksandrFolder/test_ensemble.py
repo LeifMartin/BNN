@@ -16,10 +16,10 @@ import pandas as pd
 def sigmoid(x):
     return (1 / (1 + np.exp(-x)))
 
-def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE,TEST_SIZE):
+def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE):
     net.eval()
     correct = 0
-
+    TEST_SIZE = len(dtest)
     correct3 = 0
     cases3 = 0
 

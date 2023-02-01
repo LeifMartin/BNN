@@ -37,9 +37,6 @@ else:
     print("CPUs are used!")
 
 # define the parameters
-BATCH_SIZE = 100
-TEST_BATCH_SIZE = 100
-batch_size = 100
 COND_OPT = False
 CLASSES = 5
 # TRAIN_EPOCHS = 250
@@ -489,7 +486,7 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
 class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
-                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1):
+                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -503,6 +500,7 @@ class BayesianNetwork(nn.Module):
         self.Temper = Temper
         self.dtrain = dtrain
         #self.dtest  = dtest
+        self.BATCH_SIZE = BATCH_SIZE
         
         self.BN = BN
         layers = []
@@ -593,7 +591,7 @@ class BayesianNetwork(nn.Module):
         return OUT
 
     def sample_elbo(self, input, target, NUM_BATCHES, samples):
-        outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
+        outputs = torch.zeros(samples, self.BATCH_SIZE, CLASSES).to(DEVICE)
         log_priors = torch.zeros(samples).to(DEVICE)
         log_variational_posteriors = torch.zeros(samples).to(DEVICE)
         for i in range(samples):
@@ -619,15 +617,17 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net, dtrain, NUM_BATCHES, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257)):
+def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BATCH_SIZE = 100):
     old_batch = 0
     totime = 0
-    for batch in range(int(np.ceil(dtrain.shape[0] / batch_size))):
+    TRAIN_SIZE = len(dtrain)
+    NUM_BATCHES = TRAIN_SIZE/BATCH_SIZE
+    for batch in range(int(np.ceil(dtrain.shape[0] / BATCH_SIZE))):
         batch = (batch + 1)
-        _x = dtrain[old_batch: batch_size * batch, shape[0]:shape[1]]
-        _y = dtrain[old_batch: batch_size * batch, shape[2]:shape[3]]
+        _x = dtrain[old_batch: BATCH_SIZE * batch, shape[0]:shape[1]]
+        _y = dtrain[old_batch: BATCH_SIZE * batch, shape[2]:shape[3]]
         
-        old_batch = batch_size * batch
+        old_batch = BATCH_SIZE * batch
         # print(_x.shape)
         # print(_y.shape)
 
