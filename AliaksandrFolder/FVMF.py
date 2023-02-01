@@ -244,7 +244,7 @@ class vMF(nn.Module):
             w0 = (1 - (1 + bb) * eps) / (1 - (1 - bb) * eps)
             t0 = (2 * aa * bb) / (1 - (1 - bb) * eps)
             det = (d - 1) * t0.log() - t0 + dd - uns.log()
-            v0 = torch.cat([v0, torch.tensor(w0[det >= 0]).to(DEVICE)])
+            v0 = torch.cat([v0, w0.clone().detach()[det >= 0].to(DEVICE)])#torch.tensor(w0[det >= 0]).to(DEVICE)])
             #print('w0:',w0[det >= 0])
             if len(v0) > N:
                 v0 = v0[:N]
@@ -626,7 +626,9 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
         batch = (batch + 1)
         _x = dtrain[old_batch: BATCH_SIZE * batch, shape[0]:shape[1]]
         _y = dtrain[old_batch: BATCH_SIZE * batch, shape[2]:shape[3]]
-        
+        #print('sim_data_shape',shape)
+        #print('_x:',_x)
+        #print('_y:',_y)
         old_batch = BATCH_SIZE * batch
         # print(_x.shape)
         # print(_y.shape)
