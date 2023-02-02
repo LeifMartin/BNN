@@ -585,7 +585,7 @@ class BayesianNetwork(nn.Module):
             x = F.relu(layer(x,sample))
         x = F.log_softmax(x, dim=1)
         return x
-            
+
 
     def log_prior(self):
         OUT = 0
@@ -611,6 +611,7 @@ class BayesianNetwork(nn.Module):
         log_prior = log_priors.mean()
         log_variational_posterior = log_variational_posteriors.mean()
         negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
+        #We could place a norm loss on all the mu's here, to try to regularize the mus to 1..
         if (self.Temper == 1):
             loss = (log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood
         else:
@@ -627,7 +628,7 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BATCH_SIZE = 100):
+def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
     old_batch = 0
     totime = 0
     TRAIN_SIZE = len(dtrain)
@@ -639,6 +640,7 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
         batch = (batch + 1)
         _x = dtrain[old_batch: BATCH_SIZE * batch, shape[0]:shape[1]]
         _y = dtrain[old_batch: BATCH_SIZE * batch, shape[2]:shape[3]]
+        
         #print('sim_data_shape',shape)
         #print('_x:',_x)
         #print('_y:',_y)
