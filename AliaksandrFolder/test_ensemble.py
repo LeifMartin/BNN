@@ -16,30 +16,36 @@ import pandas as pd
 def sigmoid(x):
     return (1 / (1 + np.exp(-x)))
 
-def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE):
+def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE,shape):
     net.eval()
     correct = 0
     TEST_SIZE = len(dtest)
     correct3 = 0
     cases3 = 0
-
+    Numpy = 1
+    if torch.is_tensor(dtest):
+        Numpy = 0
 
     corrects = np.zeros(TEST_SAMPLES + 1, dtype=int)
     with torch.no_grad():
         old_batch = 0
         for batch in range(int(np.ceil(dtest.shape[0] / BATCH_SIZE))):
             batch = (batch + 1)
-            _x = dtest[old_batch: BATCH_SIZE * batch, 0:256]
-            _y = dtest[old_batch: BATCH_SIZE * batch, 256:257]
+            _x = dtest[old_batch: BATCH_SIZE * batch, shape[0]:shape[1]]
+            _y = dtest[old_batch: BATCH_SIZE * batch, shape[2]:shape[3]]
 
             old_batch = BATCH_SIZE * batch
 
-            # print(_x.shape)
-            # print(_y.shape)
 
-            data = Variable(torch.FloatTensor(_x)).cuda()
-            target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
+            if Numpy:
+                data = Variable(torch.FloatTensor(_x)).cuda()
+                target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
 
+            else:
+                data   = _x.to(DEVICE)
+                target = _y.to(DEVICE)
+                target = torch.transpose(target,0,1).long()[0]
+            
             outputs = torch.zeros(TEST_SAMPLES + 1, TEST_BATCH_SIZE, CLASSES).to(DEVICE)
             for i in range(TEST_SAMPLES):
                 outputs[i] = net(data, sample=True)

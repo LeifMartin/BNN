@@ -571,10 +571,15 @@ class BayesianNetwork(nn.Module):
     
     
     def forward(self, x, sample=True):
-        print(self.layershapes[-1][-1])
-        print(self.dtrain.shape[1])
-        viewstop = self.dtrain.shape[1]-self.layershapes[-1][-1]
-        print(viewstop)
+        #x = x.view(-1, 256)
+        #for layer in self.layers:
+        #    x = F.relu(layer(x,sample))
+        #x = F.log_softmax(x, dim=1)
+        #return x
+        #print(self.layershapes[-1][-1])
+        #print(self.dtrain.shape[1])
+        viewstop = self.dtrain.shape[1]-1#self.layershapes[-1][-1]
+        #print(viewstop)
         x = x.view(-1, viewstop)
         for layer in self.layers:
             x = F.relu(layer(x,sample))
@@ -643,9 +648,12 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape = (0,256,256,257),BAT
         if Numpy:
             data = Variable(torch.FloatTensor(_x)).cuda()
             target = Variable(torch.transpose(torch.LongTensor(_y), 0, 1).cuda())[0]
+            #print('\n','target:',target,'\n')
         else:
-            data   = _x
-            target = _y
+            data   = _x.to(DEVICE)
+            target = _y.to(DEVICE)
+            target = torch.transpose(target,0,1).long()[0]
+            #print('\n','target:',target,'\n')
 
         net.zero_grad()
         loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target,NUM_BATCHES,SAMPLES)
