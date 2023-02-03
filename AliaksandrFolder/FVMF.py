@@ -174,8 +174,8 @@ class vMF(nn.Module):
 
     @property
     def mu(self):
-        #return self.mu_unnorm / norm(self.mu_unnorm) #This is the part I mentioned, we need to get this mu inserted to the weight_mu parameter at every epoch."
-        return self.mu_unnorm
+        return self.mu_unnorm / norm(self.mu_unnorm) #This is the part I mentioned, we need to get this mu inserted to the weight_mu parameter at every epoch."
+        #return self.mu_unnorm
 
     @property
     def kappa(self):
