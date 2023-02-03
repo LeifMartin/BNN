@@ -174,7 +174,8 @@ class vMF(nn.Module):
 
     @property
     def mu(self):
-        return self.mu_unnorm / norm(self.mu_unnorm) #This is the part I mentioned, we need to get this mu inserted to the weight_mu parameter at every epoch."
+        #return self.mu_unnorm / norm(self.mu_unnorm) #This is the part I mentioned, we need to get this mu inserted to the weight_mu parameter at every epoch."
+        return self.mu_unnorm
 
     @property
     def kappa(self):
@@ -486,7 +487,7 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
 class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
-                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100):
+                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100, normalize = None):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -502,7 +503,8 @@ class BayesianNetwork(nn.Module):
         self.dtest  = dtest
         self.BATCH_SIZE = BATCH_SIZE
         self.layershapes = layershapes
-        self.VD = 'vmf'
+        self.VD = VD
+        self.normalize = normalize
         
         self.BN = BN
         layers = []
@@ -674,7 +676,7 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
         #This is the MU-Ghost cure part. Since only the normalized directional component of the Mu's are ever used,
         #We are computationally better off normalizing them after every forward-pass instead of normalizing a slowly 
         #Growing mu inside the vMF-class.
-        if (net.VD=='vmf'): #self.mu_unnorm / norm(self.mu_unnorm)
+        if (net.normalize=='Normalize'): #self.mu_unnorm / norm(self.mu_unnorm)
             mu_names = [('weight_mu.0','bias_mu.0','layers.0.weight_mu','layers.0.bias_mu'),
                         ('weight_mu.1','bias_mu.1','layers.1.weight_mu','layers.1.bias_mu'),
                         ('weight_mu.2','bias_mu.2','layers.2.weight_mu','layers.2.bias_mu'),
@@ -686,9 +688,9 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
                         ('weight_mu.8','bias_mu.8','layers.8.weight_mu','layers.8.bias_mu'),]
             norm_mus = {}
             for i in range(len(net.layers)):
-                #norm_mus[mu_names[i][0]] = net.state_dict()[mu_names[i][0]]/norm(net.state_dict()[mu_names[i][0]])
+                norm_mus[mu_names[i][0]] = net.state_dict()[mu_names[i][0]]/norm(net.state_dict()[mu_names[i][0]])
                 #Weight Mus (the initialized ones? Is this really neccesarry?)
-                #norm_mus[mu_names[i][1]] = net.state_dict()[mu_names[i][1]]/norm(net.state_dict()[mu_names[i][1]])
+                norm_mus[mu_names[i][1]] = net.state_dict()[mu_names[i][1]]/norm(net.state_dict()[mu_names[i][1]])
                 
                 #Bias Mus (the initialized ones? Is this really neccesarry?)
                 norm_mus[mu_names[i][2]] = net.state_dict()[mu_names[i][2]]/norm(net.state_dict()[mu_names[i][2]])
