@@ -502,6 +502,7 @@ class BayesianNetwork(nn.Module):
         self.dtest  = dtest
         self.BATCH_SIZE = BATCH_SIZE
         self.layershapes = layershapes
+        self.VD = 'vmf'
         
         self.BN = BN
         layers = []
@@ -669,6 +670,36 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
         
         #end = time.time()
         #totime = totime + (end - start)
+        
+        #This is the MU-Ghost cure part. Since only the normalized directional component of the Mu's are ever used,
+        #We are computationally better off normalizing them after every forward-pass instead of normalizing a slowly 
+        #Growing mu inside the vMF-class.
+        if (net.VD=='vmf'): #self.mu_unnorm / norm(self.mu_unnorm)
+            mu_names = [('weight_mu.0','bias_mu.0','layers.0.weight_mu','layers.0.bias_mu'),
+                        ('weight_mu.1','bias_mu.1','layers.1.weight_mu','layers.1.bias_mu'),
+                        ('weight_mu.2','bias_mu.2','layers.2.weight_mu','layers.2.bias_mu'),
+                        ('weight_mu.3','bias_mu.3','layers.3.weight_mu','layers.3.bias_mu'),
+                        ('weight_mu.4','bias_mu.4','layers.4.weight_mu','layers.4.bias_mu'),
+                        ('weight_mu.5','bias_mu.5','layers.5.weight_mu','layers.5.bias_mu'),
+                        ('weight_mu.6','bias_mu.6','layers.6.weight_mu','layers.6.bias_mu'),
+                        ('weight_mu.7','bias_mu.7','layers.7.weight_mu','layers.7.bias_mu'),
+                        ('weight_mu.8','bias_mu.8','layers.8.weight_mu','layers.8.bias_mu'),]
+            norm_mus = {}
+            for i in range(len(net.layers)):
+                #norm_mus[mu_names[i][0]] = net.state_dict()[mu_names[i][0]]/norm(net.state_dict()[mu_names[i][0]])
+                #Weight Mus (the initialized ones? Is this really neccesarry?)
+                #norm_mus[mu_names[i][1]] = net.state_dict()[mu_names[i][1]]/norm(net.state_dict()[mu_names[i][1]])
+                
+                #Bias Mus (the initialized ones? Is this really neccesarry?)
+                norm_mus[mu_names[i][2]] = net.state_dict()[mu_names[i][2]]/norm(net.state_dict()[mu_names[i][2]])
+                
+                #Weight Mus
+                norm_mus[mu_names[i][3]] = net.state_dict()[mu_names[i][3]]/norm(net.state_dict()[mu_names[i][3]])
+                #Bias Mus
+            net.load_state_dict(norm_mus, strict=False)
+        #print('\n','unnormed:',net.state_dict())
+            
+        #print('normed:',net.state_dict(),'\n')
 
     print(epoch + 1)
     print('loss:',loss)
