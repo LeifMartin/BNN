@@ -487,7 +487,8 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
 class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
-                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100, normalize = None):
+                 VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100, normalize = None
+                 ,classification = 'classification'):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -505,6 +506,7 @@ class BayesianNetwork(nn.Module):
         self.layershapes = layershapes
         self.VD = VD
         self.normalize = normalize
+        self.classification = classification
         
         self.BN = BN
         layers = []
@@ -586,7 +588,8 @@ class BayesianNetwork(nn.Module):
         x = x.view(-1, viewstop).to(DEVICE)
         for layer in self.layers:
             x = F.relu(layer(x,sample))
-        x = F.log_softmax(x, dim=1)
+        if (self.classification == 'classification'):
+            x = F.log_softmax(x, dim=1)
         return x
 
 
