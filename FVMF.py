@@ -38,7 +38,7 @@ else:
 
 # define the parameters
 COND_OPT = False
-CLASSES = 1
+#CLASSES = 1
 # TRAIN_EPOCHS = 250
 SAMPLES = 1
 TEST_SAMPLES = 10
@@ -610,7 +610,7 @@ class BayesianNetwork(nn.Module):
             OUT += layer.log_variational_posterior
         return OUT
 
-    def sample_elbo(self, input, target, NUM_BATCHES, samples):
+    def sample_elbo(self, input, target, NUM_BATCHES, samples,CLASSES):
         outputs = torch.zeros(samples, self.BATCH_SIZE, CLASSES).to(DEVICE)
         log_priors = torch.zeros(samples).to(DEVICE)
         log_variational_posteriors = torch.zeros(samples).to(DEVICE)
@@ -646,7 +646,7 @@ def write_loss_scalars(epoch, i, batch_idx, loss, log_prior, log_variational_pos
     aaa = 5
 
 
-def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
+def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100, CLASSES = 5):
     old_batch = 0
     totime = 0
     TRAIN_SIZE = len(dtrain)
@@ -676,7 +676,7 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
             #print('\n','target:',target,'\n')
 
         net.zero_grad()
-        loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target,NUM_BATCHES,SAMPLES)
+        loss, log_prior, log_variational_posterior, negative_log_likelihood = net.sample_elbo(data, target,NUM_BATCHES,SAMPLES,CLASSES)
         #start = time.time()
         loss.backward()
         #end = time.time()
