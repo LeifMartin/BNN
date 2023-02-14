@@ -38,7 +38,7 @@ else:
 
 # define the parameters
 COND_OPT = False
-CLASSES = 5
+CLASSES = 1
 # TRAIN_EPOCHS = 250
 SAMPLES = 1
 TEST_SAMPLES = 10
@@ -49,7 +49,7 @@ pepochs = 50
 
 # set prior parameters
 PI = 1
-SIGMA_1 = torch.cuda.FloatTensor([math.exp(-0)])
+SIGMA_1 = torch.cuda.FloatTensor([math.exp(-0.001)])
 SIGMA_2 = torch.cuda.FloatTensor([math.exp(-6)])
 
 
@@ -620,7 +620,15 @@ class BayesianNetwork(nn.Module):
             log_variational_posteriors[i] = self.log_variational_posterior()
         log_prior = log_priors.mean()
         log_variational_posterior = log_variational_posteriors.mean()
-        negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
+        
+        if (self.classification == 'classification'):
+            negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
+        else:
+            loss_ga = torch.nn.GaussianNLLLoss(reduction='mean')
+            var = torch.ones_like(target)*1.0
+            #print(outputs.mean(0))
+            #print(target)
+            negative_log_likelihood = loss_ga(outputs.mean(0), target, var)
         #We could place a norm loss on all the mu's here, to try to regularize the mus to 1..
         if (self.Temper == 1):
             loss = (log_variational_posterior - log_prior) / NUM_BATCHES + negative_log_likelihood
