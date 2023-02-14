@@ -16,7 +16,7 @@ import time
 import mpmath
 import os
 
-print('FVMF RELOADED')
+
 
 prefix = "_phoneme_bg_"
 # define the summary writer
@@ -389,8 +389,11 @@ class GaussianLinear(nn.Module):
             self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
         else:
             self.log_prior, self.log_variational_posterior = 0, 0
-
-        return F.linear(input, weight, bias)
+            
+        #print('input.dtype:',input.dtype)
+        #print('weight:',weight.dtype)
+        
+        return F.linear(input, weight, bias) #cast input to float32, when the data is wierd.
     
     
     
@@ -477,6 +480,7 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
         else:
             self.log_prior, self.log_variational_posterior = 0, 0
         
+
         ForwardPass = F.linear(input=input, weight=weight, bias=bias)
         #TORCH.NN.FUNCTIONAL.LINEAR is not the same as TORCH.NN.LINEAR
         
@@ -714,4 +718,4 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100):
 
 
 
-print("Classes loaded")
+print('FVMF RELOADED')
