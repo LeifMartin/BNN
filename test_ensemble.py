@@ -92,8 +92,19 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 output = outputs[0:TEST_SAMPLES].mean(0)
                 preds = outputs[1].type(torch.float32)
                 pred = output[1].type(torch.float32)  # index of max log-probability
-                corrects += preds.sum(dim=1).squeeze().cpu().numpy()
-                correct += pred.sum().item()
+                
+                criterion = nn.MSELoss()
+                
+                loss = torch.sqrt(criterion(preds.to(DEVICE), _y.to(DEVICE)))
+                
+                print(loss)
+                
+                return loss
+                
+                #print()
+                
+                #corrects += preds.sum(dim=1).squeeze().cpu().numpy()
+                #correct += pred.sum().item()
 
 
             # print(mydata_means[1][1])
