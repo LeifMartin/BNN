@@ -16,8 +16,6 @@ import time
 import mpmath
 import os
 
-
-
 prefix = "_phoneme_bg_"
 # define the summary writer
 writer = SummaryWriter()

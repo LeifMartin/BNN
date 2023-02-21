@@ -90,16 +90,16 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
 
                 outputs[TEST_SAMPLES] = net(data, sample=False)
                 output = outputs[0:TEST_SAMPLES].mean(0)
-                preds = outputs[1].type(torch.float32)
-                pred = output[1].type(torch.float32)  # index of max log-probability
+                #preds = outputs[0].type(torch.float32)
+                #pred = output[0].type(torch.float32)  # index of max log-probability
                 
                 criterion = nn.MSELoss()
                 
-                loss = torch.sqrt(criterion(preds.to(DEVICE), _y.to(DEVICE)))
+                loss = torch.sqrt(criterion(output.to(DEVICE), _y.to(DEVICE)))
                 
-                print(loss)
+                print('\n', 'This is the RSS:',loss.item())
                 
-                return loss
+                return loss, outputs, output
                 
                 #print()
                 
