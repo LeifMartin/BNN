@@ -47,8 +47,8 @@ pepochs = 50
 
 # set prior parameters
 PI = 1
-SIGMA_1 = torch.cuda.FloatTensor([math.exp(-0.001)])
-SIGMA_2 = torch.cuda.FloatTensor([math.exp(-6)])
+SIGMA_1 = torch.cuda.FloatTensor([math.exp(-0.1)])
+SIGMA_2 = torch.cuda.FloatTensor([math.exp(-0.1)])
 
 
 def sigmoid(x):
@@ -588,10 +588,18 @@ class BayesianNetwork(nn.Module):
         viewstop = self.dtrain.shape[1]-1#self.layershapes[-1][-1]
         #print(viewstop)
         x = x.view(-1, viewstop).to(DEVICE)
-        for layer in self.layers:
-            x = F.relu(layer(x,sample))
         if (self.classification == 'classification'):
+            for layer in self.layers:
+                x = F.relu(layer(x,sample))
             x = F.log_softmax(x, dim=1)
+        else:
+            end = len(self.layers)
+            for i,layer in enumerate(self.layers):
+                
+                if (i<end-1):
+                    x = F.relu(layer(x,sample))
+                else:
+                    x = layer(x,sample)
         return x
 
 
@@ -625,8 +633,11 @@ class BayesianNetwork(nn.Module):
             loss_ga = torch.nn.GaussianNLLLoss(reduction='mean')
             var = torch.ones_like(target)
             var = var.type(torch.float32)
-            #print(outputs.mean(0))
-            #print(target)
+            #print(outputs.mean(0)[1:5])
+            #print(outputs[:,1:5])
+            #print(outputs.mean(1))
+            #print('\n','outputs:',outputs)
+            #print('\n','targets:',target)
             negative_log_likelihood = loss_ga(outputs.mean(0), target, var)
         #We could place a norm loss on all the mu's here, to try to regularize the mus to 1..
         if (self.Temper == 1):
@@ -671,7 +682,11 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100, CL
         else:
             data   = _x.to(DEVICE)
             target = _y.to(DEVICE)
-            target = torch.transpose(target,0,1).long()[0]
+            #print(target)
+            if (net.classification == 'classification'):
+                target = torch.transpose(target,0,1).long()[0]
+            
+            #print(target)
             #print('\n','target:',target,'\n')
 
         net.zero_grad()
