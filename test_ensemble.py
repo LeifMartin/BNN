@@ -97,7 +97,7 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 
                 loss = torch.sqrt(criterion(output.to(DEVICE), _y.to(DEVICE)))
                 
-                print('\n', 'This is the RSS:',loss.item())
+                print('\n', 'This is the Residual Sum Squared, SS_res:',loss.item())
                 
                 return loss, outputs, output
                 

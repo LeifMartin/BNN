@@ -623,7 +623,8 @@ class BayesianNetwork(nn.Module):
             negative_log_likelihood = F.nll_loss(outputs.mean(0), target, size_average=False)
         else:
             loss_ga = torch.nn.GaussianNLLLoss(reduction='mean')
-            var = torch.ones_like(target)*1.0
+            var = torch.ones_like(target)
+            var = var.type(torch.float32)
             #print(outputs.mean(0))
             #print(target)
             negative_log_likelihood = loss_ga(outputs.mean(0), target, var)
