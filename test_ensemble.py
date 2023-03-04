@@ -96,9 +96,11 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 criterion = nn.MSELoss()
                 
                 loss = torch.sqrt(criterion(output.to(DEVICE), _y.to(DEVICE)))
-                
-                print('\n', 'This is the Residual Sum Squared, SS_res:',loss.item())
-                
+                TSS = torch.mean(torch.pow(output.to(DEVICE) - dtest[:,-1].to(DEVICE),2))
+                RSS = loss.item()
+                R_2 = 1-RSS/TSS
+                #print('\n', 'This is the MSE on testset:, SS_res:',loss.item())
+                print('\n','This is the TSS', TSS,'This is the SS_res:',loss.item(),'\n','This is the R^2 on testset:',R_2)
                 return loss, outputs, output
                 
                 #print()
