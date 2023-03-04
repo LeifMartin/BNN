@@ -16,7 +16,7 @@ import pandas as pd
 def sigmoid(x):
     return (1 / (1 + np.exp(-x)))
 
-def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE,shape,classification = True):
+def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEVICE,shape,classification = True,plot = False):
     net.eval()
     correct = 0
     TEST_SIZE = len(dtest)
@@ -93,10 +93,10 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 #preds = outputs[0].type(torch.float32)
                 #pred = output[0].type(torch.float32)  # index of max log-probability
                 
-                criterion = nn.MSELoss()
+                criterion = nn.MSELoss(reduction='sum')
                 
-                loss = torch.sqrt(criterion(output.to(DEVICE), _y.to(DEVICE)))
-                TSS = torch.mean(torch.pow(output.to(DEVICE) - dtest[:,-1].to(DEVICE),2))
+                loss = criterion(output.to(DEVICE), _y.to(DEVICE))
+                TSS = torch.sum(torch.pow(torch.mean(dtest[:,-1]).to(DEVICE) - dtest[:,-1].to(DEVICE),2))
                 RSS = loss.item()
                 R_2 = 1-RSS/TSS
                 #print('\n', 'This is the MSE on testset:, SS_res:',loss.item())
@@ -108,7 +108,18 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 #corrects += preds.sum(dim=1).squeeze().cpu().numpy()
                 #correct += pred.sum().item()
 
-
+            if (plot == True):
+                r"""
+                This is the code from Berkeley:
+                import matplotlib
+                font = {'family' : 'normal',
+                        'weight' : 'normal',
+                        'size'   : 22}
+                matplotlib.rc('font', **font)
+                plt.rcParams["figure.figsize"] = (10,6)
+                plot_model_pred(net, Y_test, X_test, enums=100, single=False)
+                """
+                #Make some legendary plotting happen!
             # print(mydata_means[1][1])
             for jj in range(TEST_BATCH_SIZE):
                 if mydata_means[jj][pred.detach().cpu().numpy()[jj]] >= 0.95:
