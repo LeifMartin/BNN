@@ -215,7 +215,7 @@ class vMF(nn.Module):
             no autodiff
         '''
 
-        d = self.x_dim
+        d = self.x_dim #So the self.x_dim attribute is falling to 1... It must be strictly greater than 0 in order to function.
 
 
         #mu, self.kappa = self.get_params()
@@ -229,6 +229,7 @@ class vMF(nn.Module):
         bb = (kmr - 2 * self.kappa) / (d - 1)
         aa = (kmr + 2 * self.kappa + d - 1) / 4
         dd = (4 * aa * bb) / (1 + bb) - (d - 1) * np.log(d - 1)
+        #print('\n','d:',d,'\n') 
         beta = torch.distributions.Beta(torch.tensor(0.5 * (d - 1)), torch.tensor(0.5 * (d - 1)))
         uniform = torch.distributions.Uniform(0.0, 1.0)
         v0 = torch.tensor([]).to(DEVICE)
@@ -352,10 +353,11 @@ class BayesianLinearLast(nn.Module):
         return F.linear(input, weight, bias)
 
 class GaussianLinear(nn.Module):
-    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
+    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho, logtransform = False):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.L = logtransform
         
         self.weight_mu = weight_mu
         self.weight_rho = weight_rho
@@ -383,8 +385,12 @@ class GaussianLinear(nn.Module):
             weight = self.weight.mu
             bias = self.bias.mu
         if self.training or calculate_log_probs:
-            self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias)
-            self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
+            if (self.L == True): #We kill the prior in the last Gaussian layer when conducting regression for the vMF.
+                self.log_prior = 0
+                self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
+            else:
+                self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias) #There is some log scale failure here when combining with the vmf for regression tasks.
+                self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
         else:
             self.log_prior, self.log_variational_posterior = 0, 0
             
@@ -401,11 +407,10 @@ class vMF_Layerwise(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         
-
-        self.weight =  vMF(weight_mu, logkappa=weight_rho, x_dim=out_features * in_features)
+        self.weight =  vMF(weight_mu, logkappa=weight_rho, x_dim=out_features * in_features) #So here
         
         
-        self.bias = vMF(bias_mu, logkappa=bias_rho, x_dim = out_features)
+        self.bias = vMF(bias_mu, logkappa=bias_rho, x_dim = out_features) #Or here, the x_dim argument parsed becomes 0.
         
         # Prior distributions
         self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
@@ -442,6 +447,8 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
         self.bias_mu = bias_mu
         self.weight_mu = weight_mu
         self.weight = []
+        print('\n','self.weight x_dim:',in_features)
+        print('\n','self.bias x_dim:',out_features)
         #self.weight = torch.Tensor(out_features, in_features) #This should not be a tensor!
         for i in range(self.out_features):
             self.weight +=  [vMF(weight_mu[i], logkappa=weight_rho, x_dim=in_features)] #This putting things into lists might trip up
@@ -490,7 +497,7 @@ class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100, normalize = None
-                 ,classification = 'classification'):
+                 ,classification = 'classification',NODEFORCE = False):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -535,9 +542,14 @@ class BayesianNetwork(nn.Module):
             #Initialization of layers.
             self.layers = nn.ModuleList()
             for i,layer in enumerate(layershapes):
-                layers.append(vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
+                    if (i<len(layershapes)-1) or (classification == 'classification') or NODEFORCE:
+                        layers.append(vMF_NodeWise(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i],
+                                                   weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
+                    else:
+                        layers.append(GaussianLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i],
+                                                     weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i],
+                                                     bias_rho=self.bias_rho[i],logtransform = True))
             self.layers = nn.Sequential(*layers)
-            #print('\n','nn.sequential.layers:',list(self.layers.parameters()))
             
         else:
             #Initialization of weights and biases
