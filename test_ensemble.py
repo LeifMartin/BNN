@@ -100,7 +100,7 @@ def test_ensemble(net,dtest,TEST_SAMPLES,TEST_BATCH_SIZE,BATCH_SIZE, CLASSES,DEV
                 RSS = loss.item()
                 R_2 = 1-RSS/TSS
                 #print('\n', 'This is the MSE on testset:, SS_res:',loss.item())
-                print('\n','This is the TSS', TSS,'This is the SS_res:',loss.item(),'\n','This is the R^2 on testset:',R_2)
+                print('\n','This is the TSS', TSS.item(),'This is the SS_res:',loss.item(),'\n','This is the R^2 on testset:',R_2)
                 return loss, outputs, output
                 
                 #print()
