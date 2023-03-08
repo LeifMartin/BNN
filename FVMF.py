@@ -447,8 +447,6 @@ class vMF_NodeWise_nobias(nn.Module): #There is no prior here, but I don't think
         #self.bias_mu = bias_mu
         self.weight_mu = weight_mu
         self.weight = []
-        print('\n','NOBIASLAYER self.weight x_dim:',in_features)
-        #print('\n','self.bias x_dim:',out_features)
         #self.weight = torch.Tensor(out_features, in_features) #This should not be a tensor!
         for i in range(self.out_features):
             self.weight +=  [vMF(weight_mu[i], logkappa=weight_rho, x_dim=in_features)] #This putting things into lists might trip up
@@ -500,8 +498,6 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
         self.bias_mu = bias_mu
         self.weight_mu = weight_mu
         self.weight = []
-        print('\n','self.weight x_dim:',in_features)
-        print('\n','self.bias x_dim:',out_features)
         #self.weight = torch.Tensor(out_features, in_features) #This should not be a tensor!
         for i in range(self.out_features):
             self.weight +=  [vMF(weight_mu[i], logkappa=weight_rho, x_dim=in_features)] #This putting things into lists might trip up
