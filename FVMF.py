@@ -584,9 +584,9 @@ class BayesianNetwork(nn.Module):
             else:
             
                 self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-                self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.weight_rho = [nn.Parameter(w_kappa[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
                 self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
-                self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_rho   = [nn.Parameter(b_kappa[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
             
             #Initialization of layers.
             self.layers = nn.ModuleList()
@@ -652,14 +652,14 @@ class BayesianNetwork(nn.Module):
         if (self.classification == 'classification'):
             x = x.view(-1, viewstop).to(DEVICE)
             for layer in self.layers:
-                x = F.relu(layer(x,sample))
+                x = F.leaky_relu(layer(x,sample))
             x = F.log_softmax(x, dim=1)
         else:
             end = len(self.layers)
             for i,layer in enumerate(self.layers):
                 
                 if (i<end-1):
-                    x = F.relu(layer(x,sample))
+                    x = F.leaky_relu(layer(x,sample))
                 else:
                     x = layer(x,sample)
         return x
