@@ -532,9 +532,9 @@ class vMF_NodeWise(nn.Module): #There is no prior here, but I don't think we nee
                 #print('norm_w_mu:',norm_w_mu,'\n')
                 self.log_variational_posterior += self.weight[i].log_prob(weight[i])
         else:
-            self.log_prior, self.log_variational_posterior = 0, 0
+            self.log_prior,self.log_variational_posterior = 0,0
         
-
+        
         ForwardPass = F.linear(input=input, weight=weight, bias=bias)
         #TORCH.NN.FUNCTIONAL.LINEAR is not the same as TORCH.NN.LINEAR
         
