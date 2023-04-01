@@ -118,6 +118,9 @@ class vMFLogPartition(torch.autograd.Function):
 
 # define the Gaussian distribution
 class Gaussian(object):
+    r"""
+    Don't Touch!!
+    """
     def __init__(self, mu, rho):
         super().__init__()
         self.mu = mu.to(DEVICE)
@@ -137,6 +140,38 @@ class Gaussian(object):
                 - torch.log(self.sigma)
                 - ((input - self.mu) ** 2) / (2 * self.sigma ** 2)).sum()
 
+    
+    
+class ProjGaus(object):
+    
+    #You can change!
+    
+    def __init__(self, mu, rho):
+        super().__init__()
+        #Noe i de to linjene under liker ikke backward()
+        #self.mu_unnorm = mu.to(DEVICE)
+        #self.mu = mu/torch.norm(mu).to(DEVICE)
+        self.mu = mu.to(DEVICE)
+        self.rho = rho
+        self.normal = torch.distributions.Normal(0, 1)
+
+    @property
+    def sigma(self):
+        return torch.log1p(torch.exp(self.rho)).to(DEVICE)
+
+    def sample(self):
+        epsilon = self.normal.sample(self.rho.size()).to(DEVICE)
+        OUT_unnorm= self.mu + self.sigma * epsilon
+        
+        return OUT_unnorm/torch.norm(OUT_unnorm)
+
+    def log_prob(self, input): 
+        input_norm   = input/torch.norm(input)
+        mu_norm = self.mu/torch.norm(self.mu)
+        #Per haps we could return the normalized mu's here or something, and insert them into the torch parameters for mu and sigma?
+        return (-math.log(math.sqrt(2 * math.pi))
+                - torch.log(self.sigma)
+                - ((input_norm - mu_norm) ** 2) / (2 * self.sigma ** 2)).sum()
 
 
 
@@ -399,7 +434,62 @@ class GaussianLinear(nn.Module):
         
         return F.linear(input, weight, bias) #cast input to float32, when the data is wierd.
     
+r"""
+HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+_____________________________________________________________________________________________________________________________________
+-------------------------------------------------------------------------------------------------------------------------------------
+_____________________________________________________________________________________________________________________________________
+
+HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+"""
     
+    
+class ProjGausLinear(nn.Module):
+    def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho, logtransform = False):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.L = logtransform
+        
+        self.weight_mu = weight_mu
+        self.weight_rho = weight_rho
+        
+        self.bias_mu = bias_mu
+        self.bias_rho = bias_rho
+
+        self.weight = ProjGaus(self.weight_mu, self.weight_rho)
+
+
+        self.bias = ProjGaus(self.bias_mu, self.bias_rho) #The variance is on log-scale, so negative input is just a very small variance.
+        # Prior distributions
+        #self.weight_prior = HypersphericalUniform(out_features*in_features,DEVICE)
+        #self.weight_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2) We are on the uniform hyptersphere priorwise, so it doesn't contribute. its information was specified by normalization of the sampler. Not optimal solution wrt Ghost Mu's, 
+        #self.bias_prior = ScaleMixtureGaussian(PI, SIGMA_1, SIGMA_2) We are on the uniform hyptersphere priorwise, so it doesn't contribute. its information was specified by normalization of the sampler. Not optimal solution wrt Ghost Mu's, 
+        #self.bias_prior = HypersphericalUniform(out_features*in_features,DEVICE)#
+        self.log_prior = 0
+        self.log_variational_posterior = 0
+
+    def forward(self, input, sample=False, calculate_log_probs=False):
+        if self.training or sample:
+            weight = self.weight.sample()
+            bias = self.bias.sample()
+        else:
+            weight = self.weight.mu
+            bias = self.bias.mu
+        if self.training or calculate_log_probs:
+            if (self.L == True): #We kill the prior in the last Gaussian layer when conducting regression for the vMF.
+                #self.log_prior = 0#*self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias) #0?
+                self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
+            else:
+                #self.log_prior = self.weight_prior.log_prob(weight) + self.bias_prior.log_prob(bias) #There is some log scale failure here when combining with the vmf for regression tasks.
+                self.log_variational_posterior = self.weight.log_prob(weight) + self.bias.log_prob(bias)
+        else:
+            self.log_prior, self.log_variational_posterior = 0, 0
+            
+        #print('input.dtype:',input.dtype)
+        #print('weight:',weight.dtype)
+        
+        return F.linear(input, weight, bias) #cast input to float32, when the data is wierd.
     
 class vMF_Layerwise(nn.Module):
     def __init__(self, in_features, out_features, weight_mu ,weight_rho, bias_mu, bias_rho):
@@ -600,7 +690,7 @@ class BayesianNetwork(nn.Module):
                                                      bias_rho=self.bias_rho[i]))
             self.layers = nn.Sequential(*layers)
             
-        else:
+        elif (VD=='Gaussian'):
             #Initialization of weights and biases
             if (w_mu == None) or (b_mu == None):
                 if (w_kappa == None) or (b_kappa == None):
@@ -630,6 +720,44 @@ class BayesianNetwork(nn.Module):
             for i,layer in enumerate(layershapes):
                 self.layers.append(GaussianLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i],
                                                   weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
+            r"""
+            PROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUS
+            PROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUS
+            PROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUS
+            PROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUSPROJGAUS
+            """ 
+        elif (VD=='ProjGaus'):
+            if (w_mu == None) or (b_mu == None):
+                if (w_kappa == None) or (b_kappa == None):
+                    w_kappa = (2, 4) #w_kappa = (0, 2)
+                    b_kappa = (2, 4) #b_kappa = (0, 2)
+                
+                print('Random Init Utilized')
+                #w_mu = 
+                self.weight_mu  = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1], layershapes[i][0]).normal_(0, 0.5),requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                
+                #w_rho = 
+                self.weight_rho = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1],layershapes[i][0]).uniform_(w_kappa[0],w_kappa[1]),requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            
+                self.bias_mu    = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(-0.2, 0.2),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+                self.bias_rho   = nn.ParameterList([nn.Parameter(torch.Tensor(layershapes[i][1]).uniform_(b_kappa[0],b_kappa[1]),
+                                                                 requires_grad=True).to(DEVICE) for i in range(len(layershapes))])
+            else:
+            
+                self.weight_mu  = [nn.Parameter(w_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.weight_rho = [nn.Parameter(w_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_mu    = [nn.Parameter(b_mu[i], requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                self.bias_rho   = [nn.Parameter(b_kappa, requires_grad=True).to(DEVICE) for i in range(len(layershapes))]
+                
+            #Initialization of layers.
+            self.layers = nn.ModuleList()
+            for i,layer in enumerate(layershapes):
+                self.layers.append(ProjGausLinear(layershapes[i][0], layershapes[i][1], weight_mu=self.weight_mu[i],
+                                                  weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i]))
+        else:
+            raise Exception("VD argument invalid")
+
                 #print('\n','layers:',list(self.layers.named_parameters()))
                 #, weight_mu=self.weight_mu[i], weight_rho=self.weight_rho[i], bias_mu=self.bias_mu[i], bias_rho=self.bias_rho[i])]
             #self.layers = nn.Sequential(*layers) #(layer[0],layer[1],..)
