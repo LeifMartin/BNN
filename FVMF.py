@@ -925,7 +925,7 @@ def train(net, dtrain, SAMPLES, optimizer, epoch, i, shape, BATCH_SIZE = 100, CL
     print(epoch + 1)
     print('loss:',loss)
     print('negative_log_likelihood:',negative_log_likelihood)
-    return totime
+    return totime, loss
 
 
 
