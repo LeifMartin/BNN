@@ -636,7 +636,7 @@ class BayesianNetwork(nn.Module):
     
     def __init__(self, layershapes,dtrain,dtest, w_mu = None, b_mu=None, 
                  VD='Gaussian', BN='notbatchnorm',w_kappa=None,b_kappa=None,Temper=1,BATCH_SIZE = 100, normalize = None
-                 ,classification = 'classification',NODEFORCE = False):
+                 ,classification = 'classification',NODEFORCE = False,VISION = False):
         super().__init__()
         num_layers = len(layershapes)
         #if (w_mu == None) or (b_mu == None):
@@ -655,6 +655,7 @@ class BayesianNetwork(nn.Module):
         self.VD = VD
         self.normalize = normalize
         self.classification = classification
+        self.VISION = VISION
         
         self.BN = BN
         layers = []
@@ -763,9 +764,15 @@ class BayesianNetwork(nn.Module):
             #self.layers = nn.Sequential(*layers) #(layer[0],layer[1],..)
             #print('\n','nn.sequential.layers:', list(self.layers.parameters()))
             
-        
+        if (self.VISION == True):
+            print('VISION')
+            self.conv1 = nn.Conv2d(in_channels=1, out_channels=1,kernel_size=(5, 5))
+            self.maxpool1 = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
+        if (self.VISION == 'dense'):
+            self.linear = nn.Linear(layershapes[0][0],layershapes[0][1],bias=False, device=DEVICE)
+            print('oui')
     
-    
+
     def forward(self, x, sample=True):
         #x = x.view(-1, 256)
         #for layer in self.layers:
@@ -777,11 +784,32 @@ class BayesianNetwork(nn.Module):
         viewstop = self.dtrain.shape[1]-1#self.layershapes[-1][-1]
         #print(viewstop)
         
+        #I don't know where the viewstop thing should be.
+        
         if (self.classification == 'classification'):
-            x = x.view(-1, viewstop).to(DEVICE)
-            for layer in self.layers:
-                x = F.leaky_relu(layer(x,sample))
-            x = F.log_softmax(x, dim=1)
+            if (self.VISION == True):
+                x = x.reshape(self.BATCH_SIZE,1,28,28).to(DEVICE)
+                x = x.to(DEVICE)
+                x = self.conv1(x).to(DEVICE)
+                x = F.leaky_relu(x)
+                x = self.maxpool1(x)
+                x = x.view(-1, viewstop).to(DEVICE)
+                for layer in self.layers[1:]:
+                    x = F.leaky_relu(layer(x,sample))
+                x = F.log_softmax(x, dim=1)
+                
+            if (self.VISION == 'dense'):
+                x = x.view(-1, viewstop).to(DEVICE)
+                x = F.leaky_relu(self.linear(x))
+                for layer in self.layers[1:]:
+                    x = F.leaky_relu(layer(x,sample))
+                x = F.log_softmax(x, dim=1)
+                
+            else:
+                x = x.view(-1, viewstop).to(DEVICE)
+                for layer in self.layers:
+                    x = F.leaky_relu(layer(x,sample))
+                x = F.log_softmax(x, dim=1)
         else:
             end = len(self.layers)
             for i,layer in enumerate(self.layers):
