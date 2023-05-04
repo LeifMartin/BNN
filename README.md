@@ -1,8 +1,7 @@
-# BNN
-Research for Masters Thesis.
+# Spherical Priors for Robust Bayesian Deep Learning
 
-Tentatively built on the work from Haakooto/CS282_final_project with Håkon Olav Torvik and Khachatur Mirijanyan.
+## Setting Up the Environment 
 
-Also per haps the code from Aliaksandr Hubin, my supervisor at UiO.
+1. Create the environment with `conda env create -f environment.yml`. The first line of the document sets the name of the environment, which is **BNN2**.
 
-Remember that the weaknesses were both the Ghost mu's growing unnecessarily large, and the fact that the variance on eavh set of input weights to each node is forced to be the same, as the vMF does not support differing variance for each dimension
+2. Activate the environment with `conda activate BNN2`.
