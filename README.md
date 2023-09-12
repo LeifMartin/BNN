@@ -7,9 +7,8 @@
 2. Activate the environment with `conda activate BNN2`.
 
 
-# Grading:
 
-## Final grade: B
+# Final grade: B
 
 ## Explanation of what would be required for an A, from graders Arnt-Børre Salberg and Sven Ove Samuelsen:
 
