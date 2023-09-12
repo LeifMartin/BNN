@@ -7,11 +7,11 @@
 2. Activate the environment with `conda activate BNN2`.
 
 
-#Grading:
+# Grading:
 
-##Final grade: B
+## Final grade: B
 
-##Explanation of what would be required for an A, from graders Arnt-Børre Salberg and Sven Ove Samuelsen:
+## Explanation of what would be required for an A, from graders Arnt-Børre Salberg and Sven Ove Samuelsen:
 
 "
 Selv om oppgaven presenterer en orginal og interessant ide, er det flere aspekter som kunne vært forbedret:
@@ -24,7 +24,7 @@ presentasjonen av metodene i Kapittel 2 kunne klart vært bedre.
 - Noe av dette ble forbedret i presentasjonen og dermed kunne vi gi en endelig karakter B.
 "
 
-##Translation of explanation:
+## Translation of explanation:
 
 "
 Although the thesis presents an original and interesting idea, there is multiple aspects that could be improved:
