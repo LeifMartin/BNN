@@ -35,4 +35,4 @@ Although the thesis presents an original and interesting idea, there is multiple
 
 - Some of this was improved in the presentation, and therefore we could give a final grade B.
 "
- - 
+
